@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-def generate_plots(csv_path, output_dir):
+def generate_phase3_plots(csv_path, output_dir):
     if not os.path.exists(csv_path):
         return
 
@@ -15,61 +15,52 @@ def generate_plots(csv_path, output_dir):
         return
 
     os.makedirs(output_dir, exist_ok=True)
-    platform = df['platform'].iloc[0]
-
     plt.style.use('ggplot')
 
-    # One plot per algorithm per metric to keep things readable
-    for algorithm in df['algorithm'].unique():
-        alg_df = df[df['algorithm'] == algorithm]
-        
-        # 1. Runtime vs Parameter
+    # 1. Runtime vs Cache Budget (Needleman-Wunsch)
+    nw_df = df[df['algorithm'] == 'Needleman-Wunsch']
+    if not nw_df.empty:
         plt.figure(figsize=(10, 6))
-        for variant in alg_df['variant'].unique():
-            var_df = alg_df[alg_df['variant'] == variant]
-            # Use largest parameter_2 (sequence length / nodes)
-            max_p2 = var_df['parameter_2'].max()
-            p2_df = var_df[var_df['parameter_2'] == max_p2]
-            plt.plot(p2_df['parameter_1'], p2_df['runtime_us'], marker='o', label=f'{variant} (Size={max_p2})')
+        srf_nw = nw_df[nw_df['variant'].str.contains('SRF')]
+        plt.plot(srf_nw['cache_budget'], srf_nw['runtime_us'], marker='o', label='SRF-CacheAware')
         
-        plt.xlabel('SRF Control Parameter (TileSize / K-Interval / Depth)')
+        # Plot Baseline as horizontal line
+        base_rt = nw_df[nw_df['variant'] == 'Baseline']['runtime_us'].iloc[0]
+        plt.axhline(y=base_rt, color='r', linestyle='--', label='Baseline')
+        
+        plt.xlabel('Cache Budget (KB)')
         plt.ylabel('Runtime (µs)')
-        plt.title(f'{algorithm} - Runtime vs Parameter ({platform})')
+        plt.title('NW Runtime vs Cache Budget (Fixed Memory)')
         plt.legend()
-        plt.savefig(os.path.join(output_dir, f"{algorithm.replace(' ', '_').lower()}_runtime.png"), dpi=300)
+        plt.savefig(os.path.join(output_dir, "nw_runtime_vs_cache.png"), dpi=300)
         plt.close()
 
-        # 2. Memory vs Parameter
+    # 2. Runtime vs Working Set
+    plt.figure(figsize=(10, 6))
+    for alg in df['algorithm'].unique():
+        alg_df = df[df['algorithm'] == alg]
+        srf_alg = alg_df[alg_df['variant'].str.contains('SRF')]
+        if not srf_alg.empty:
+            plt.scatter(srf_alg['working_set_proxy'], srf_alg['runtime_us'], label=alg)
+    
+    plt.xlabel('Working Set Proxy (Bytes)')
+    plt.ylabel('Runtime (µs)')
+    plt.title('SRF Runtime vs Working Set Size')
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, "runtime_vs_workingset.png"), dpi=300)
+    plt.close()
+
+    # 3. Recomputation vs Cache Budget (Needleman-Wunsch)
+    if not nw_df.empty:
         plt.figure(figsize=(10, 6))
-        for variant in alg_df['variant'].unique():
-            var_df = alg_df[alg_df['variant'] == variant]
-            max_p2 = var_df['parameter_2'].max()
-            p2_df = var_df[var_df['parameter_2'] == max_p2]
-            plt.plot(p2_df['parameter_1'], p2_df['peak_memory_kb'], marker='s', linestyle='--', label=f'{variant}')
-        
-        plt.xlabel('SRF Control Parameter')
-        plt.ylabel('Memory (KB)')
-        plt.title(f'{algorithm} - Memory vs Parameter')
+        srf_nw = nw_df[nw_df['variant'].str.contains('SRF')]
+        plt.plot(srf_nw['cache_budget'], srf_nw['recompute_events'], marker='^', color='green', label='Recomputation Events')
+        plt.xlabel('Cache Budget (KB)')
+        plt.ylabel('Recompute Count')
+        plt.title('NW Recomputation Overhead vs Cache Budget')
         plt.legend()
-        plt.savefig(os.path.join(output_dir, f"{algorithm.replace(' ', '_').lower()}_memory.png"), dpi=300)
+        plt.savefig(os.path.join(output_dir, "nw_recompute_vs_cache.png"), dpi=300)
         plt.close()
-
-        # 3. Recomputation vs Parameter
-        srf_df = alg_df[alg_df['variant'].str.contains('SRF')]
-        if not srf_df.empty:
-            plt.figure(figsize=(10, 6))
-            for variant in srf_df['variant'].unique():
-                var_df = srf_df[srf_df['variant'] == variant]
-                max_p2 = var_df['parameter_2'].max()
-                p2_df = var_df[var_df['parameter_2'] == max_p2]
-                plt.plot(p2_df['parameter_1'], p2_df['recompute_events'], marker='^', label=f'{variant}')
-            
-            plt.xlabel('SRF Control Parameter')
-            plt.ylabel('Recomputation Events')
-            plt.title(f'{algorithm} - Recomputation Overhead')
-            plt.legend()
-            plt.savefig(os.path.join(output_dir, f"{algorithm.replace(' ', '_').lower()}_recompute.png"), dpi=300)
-            plt.close()
 
 if __name__ == "__main__":
-    generate_plots("results/csv/benchmark_log.csv", "results/plots")
+    generate_phase3_plots("results/csv/benchmark_log.csv", "results/plots")
