@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Running benchmarks..."
+echo "[SRF] Starting Benchmarks..."
 
-# ---- Example stub entries ----
-echo "needleman_wunsch,baseline,local,0,stub" >> results/csv/benchmark_log.csv
+# Measurements recorded to benchmark_log.csv
+# Format: Algorithm, Variant, Platform, Time (ms), Status
 
-echo "Benchmarks finished."
+# Ensure results directory exists
+mkdir -p results/csv
+
+# Clear existing results for a fresh run
+# echo "Algorithm,Variant,Platform,Time_ms,Status" > results/csv/benchmark_log.csv
+
+# Placeholder for actual measurements
+# (Measurements will be added in Phase 1)
+
+echo "[SRF] Benchmarks finished."
