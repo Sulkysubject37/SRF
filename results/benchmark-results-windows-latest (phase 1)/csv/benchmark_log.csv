@@ -1,5 +1,0 @@
-Algorithm,Variant,Platform,Time_us,Status
-Forward,Baseline,MINGW64_NT-10.0-26100,0,Success
-Graph-DP (Shortest Path DAG),Baseline,MINGW64_NT-10.0-26100,0,Success
-Needleman-Wunsch,Baseline,MINGW64_NT-10.0-26100,0,Success
-Viterbi,Baseline,MINGW64_NT-10.0-26100,0,Success
