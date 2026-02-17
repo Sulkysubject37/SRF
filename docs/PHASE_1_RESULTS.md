@@ -17,11 +17,12 @@ This document provides a transparent summary of the baseline performance, memory
 - **Cache Diag:** A proxy for data access density (Total DP table cell visits).
 
 ## Visual Comparison
-### Runtime Comparison
-![Runtime Comparison](runtime_darwin.png)
+### Master Performance Profiles
+The following master plots provide a consolidated view of all measured parameters (Runtime, Memory, and Cache Accesses) for each platform:
 
-### Memory Footprint
-![Memory Comparison](memory_darwin.png)
+- **macOS (Darwin):** ![Darwin Master Plot](../results/plots/master_profile_darwin.png)
+- **Linux:** ![Linux Master Plot](../results/plots/master_profile_linux.png)
+- **Windows:** ![Windows Master Plot](../results/plots/master_profile_mingw64_nt-10.0-26100.png)
 
 ## Data Integrity
 - **Methodology:** Peak RSS tracked via `getrusage` (Unix) and `GetProcessMemoryInfo` (Windows).
