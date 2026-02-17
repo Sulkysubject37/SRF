@@ -1,0 +1,5 @@
+Algorithm,Variant,Platform,Time_us,Status
+Forward,Baseline,Darwin,0,Success
+Graph-DP (Shortest Path DAG),Baseline,Darwin,0,Success
+Needleman-Wunsch,Baseline,Darwin,0,Success
+Viterbi,Baseline,Darwin,0,Success

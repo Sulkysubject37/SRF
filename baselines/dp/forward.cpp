@@ -5,15 +5,10 @@
 #include <chrono>
 #include <cmath>
 
-// Simple HMM: 2 states (Rainy, Sunny), 3 observations (Walk, Shop, Clean)
 enum State { Rainy, Sunny };
 enum Observation { Walk, Shop, Clean };
 
-void forward_algorithm() {
-    std::vector<Observation> obs = {Walk, Shop, Clean};
-    std::vector<State> states = {Rainy, Sunny};
-
-    // Probabilities
+double run_forward(const std::vector<Observation>& obs, const std::vector<State>& states) {
     double start_p[] = {0.6, 0.4};
     double trans_p[2][2] = {{0.7, 0.3}, {0.4, 0.6}};
     double emit_p[2][3] = {{0.1, 0.4, 0.5}, {0.6, 0.3, 0.1}};
@@ -23,14 +18,10 @@ void forward_algorithm() {
 
     std::vector<std::vector<double>> alpha(T, std::vector<double>(S));
 
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    // Initial step
     for (size_t s = 0; s < S; ++s) {
         alpha[0][s] = start_p[s] * emit_p[s][obs[0]];
     }
 
-    // Recursion
     for (size_t t = 1; t < T; ++t) {
         for (size_t s = 0; s < S; ++s) {
             double sum_p = 0.0;
@@ -41,22 +32,32 @@ void forward_algorithm() {
         }
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-
-    // Termination
     double total_prob = 0.0;
     for (size_t s = 0; s < S; ++s) {
         total_prob += alpha[T - 1][s];
     }
-
-    std::cout << "Algorithm: Forward" << std::endl;
-    std::cout << "Observations: " << T << std::endl;
-    std::cout << "Total_Probability: " << total_prob << std::endl;
-    std::cout << "Time_us: " << duration << std::endl;
+    return total_prob;
 }
 
 int main() {
-    forward_algorithm();
+    std::vector<Observation> obs(100, Walk);
+    for(int i=0; i<100; i+=3) obs[i] = Shop;
+    std::vector<State> states = {Rainy, Sunny};
+
+    const int iterations = 1000;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    double dummy = 0;
+    for (int i = 0; i < iterations; ++i) {
+        dummy += run_forward(obs, states);
+    }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    
+    auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    double avg_duration = static_cast<double>(total_duration) / iterations;
+
+    std::cout << "Algorithm: Forward" << std::endl;
+    std::cout << "Forward_Check: " << dummy << std::endl;
+    std::cout << "Time_us: " << avg_duration << std::endl;
     return 0;
 }

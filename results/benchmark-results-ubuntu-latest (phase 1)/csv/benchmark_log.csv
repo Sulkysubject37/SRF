@@ -1,0 +1,5 @@
+Algorithm,Variant,Platform,Time_us,Status
+Forward,Baseline,Linux,0,Success
+Graph-DP (Shortest Path DAG),Baseline,Linux,0,Success
+Needleman-Wunsch,Baseline,Linux,0,Success
+Viterbi,Baseline,Linux,0,Success
