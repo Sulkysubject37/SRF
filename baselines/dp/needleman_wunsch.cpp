@@ -30,14 +30,22 @@ int run_nw(const std::string& s1, const std::string& s2, const Scoring& score) {
     return matrix[n][m];
 }
 
-int main() {
-    std::string s1(300, 'A'); // Slightly larger for memory
-    std::string s2(300, 'T');
+int main(int argc, char* argv[]) {
+    int seq_len = (argc > 1) ? std::stoi(argv[1]) : 300;
+    
+    std::string s1(seq_len, 'A');
+    std::string s2(seq_len, 'T');
+    // Align input logic with SRF variants
+    for(int i=0; i<seq_len; i+=5) s1[i] = 'T';
+
     Scoring score;
     const int iterations = 50;
     
+    // Single run for validation
+    int validation_score = run_nw(s1, s2, score);
+
     auto start = std::chrono::high_resolution_clock::now();
-    int dummy = 0;
+    long long dummy = 0;
     for (int i = 0; i < iterations; ++i) {
         dummy += run_nw(s1, s2, score);
     }
@@ -48,9 +56,13 @@ int main() {
     size_t memory = srf::get_peak_rss();
 
     std::cout << "Algorithm: Needleman-Wunsch" << std::endl;
-    std::cout << "Score: " << dummy << std::endl;
+    std::cout << "Result_Check: " << validation_score << std::endl;
     std::cout << "Time_us: " << avg_duration << std::endl;
     std::cout << "Memory_kb: " << memory << std::endl;
-    std::cout << "Cache_Hits_Diagnostic: " << (300 * 300) << std::endl; // Accesses
+    std::cout << "Cache_Hits_Diagnostic: " << (seq_len * seq_len) << std::endl; // Approx
+    
+    // Prevent optimization of dummy
+    if (dummy == 0) return 0; 
+
     return 0;
 }

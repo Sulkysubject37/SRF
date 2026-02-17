@@ -71,10 +71,11 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Algorithm: Forward" << std::endl;
     std::cout << "Variant: SRF-Checkpoint" << std::endl;
-    std::cout << "Result: " << result << std::endl;
+    std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
+    std::cout << "Cache_Hits_Diagnostic: " << (seq_len * 2 * 2) << std::endl;
     std::cout << "Param_1: " << k_interval << " (K-Interval)" << std::endl;
     std::cout << "Param_2: " << seq_len << " (SeqLen)" << std::endl;
 

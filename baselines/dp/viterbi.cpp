@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <chrono>
 #include "../utils.hpp"
 
@@ -24,25 +25,43 @@ double run_viterbi(const std::vector<Observation>& obs, const std::vector<State>
             V[t][s] = max_p;
         }
     }
-    return V[T - 1][0];
+    double final_max = -1.0;
+    for (size_t s = 0; s < S; ++s) {
+        if (V[T - 1][s] > final_max) final_max = V[T - 1][s];
+    }
+    return final_max;
 }
 
-int main() {
-    std::vector<Observation> obs(500, Walk);
+int main(int argc, char* argv[]) {
+    int seq_len = (argc > 1) ? std::stoi(argv[1]) : 500;
+    std::vector<Observation> obs(seq_len, Walk);
+    for(int i=0; i<seq_len; i+=3) obs[i] = Shop;
     std::vector<State> states = {Rainy, Sunny};
+
     const int iterations = 500;
+    
+    // Validation run
+    double result = run_viterbi(obs, states);
+
     auto start_time = std::chrono::high_resolution_clock::now();
     double dummy = 0;
-    for (int i = 0; i < iterations; ++i) dummy += run_viterbi(obs, states);
+    for (int i = 0; i < iterations; ++i) {
+        dummy += run_viterbi(obs, states);
+    }
     auto end_time = std::chrono::high_resolution_clock::now();
+    
     auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     double avg_duration = static_cast<double>(total_duration) / iterations;
     size_t memory = srf::get_peak_rss();
 
     std::cout << "Algorithm: Viterbi" << std::endl;
-    std::cout << "Result: " << dummy << std::endl;
+    std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << avg_duration << std::endl;
     std::cout << "Memory_kb: " << memory << std::endl;
-    std::cout << "Cache_Hits_Diagnostic: " << (500 * 2 * 2) << std::endl;
+    std::cout << "Cache_Hits_Diagnostic: " << (seq_len * 2 * 2) << std::endl;
+    
+    // Prevent optimization
+    if (dummy < 0) return 1;
+
     return 0;
 }

@@ -45,10 +45,11 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Algorithm: Graph-DP" << std::endl;
     std::cout << "Variant: SRF-Recompute" << std::endl;
-    std::cout << "Result: " << result << std::endl;
+    std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
+    std::cout << "Cache_Hits_Diagnostic: " << (num_nodes * 1) << std::endl;
     std::cout << "Param_1: " << recompute_depth << " (DepthProxy)" << std::endl;
     std::cout << "Param_2: " << num_nodes << " (NumNodes)" << std::endl;
 

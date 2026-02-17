@@ -9,12 +9,12 @@ cd "$(dirname "$0")/.."
 # Build all binaries
 bash benchmarks/build.sh
 
-# CSV Schema: algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,parameter_1,parameter_2,notes
+# CSV Schema: algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,cache_hits_diag,parameter_1,parameter_2,notes
 CSV_FILE="results/csv/benchmark_log.csv"
 PLATFORM=$(uname)
 
 mkdir -p results/csv
-echo "algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,parameter_1,parameter_2,notes" > $CSV_FILE
+echo "algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,cache_hits_diag,parameter_1,parameter_2,notes" > $CSV_FILE
 
 # Helper to log a run
 log_run() {
@@ -25,18 +25,21 @@ log_run() {
     local p2=$5
     
     echo "Running $alg ($var) P1=$p1 P2=$p2..."
-    local output=$(./build/$bin "$p2" "$p1") # Note: p2=seq_len, p1=param
+    local output=$(./build/$bin "$p2" "$p1") # Note: p2=size, p1=param
     
     local runtime=$(echo "$output" | grep "Time_us:" | cut -d' ' -f2-)
     local memory=$(echo "$output" | grep "Memory_kb:" | cut -d' ' -f2-)
     local recompute=$(echo "$output" | grep "Recompute_Events:" | cut -d' ' -f2-)
-    [ -z "$recompute" ] && recompute=0
+    local cache_diag=$(echo "$output" | grep "Cache_Hits_Diagnostic:" | cut -d' ' -f2-)
     
-    echo "$alg,$var,$PLATFORM,$runtime,$memory,$recompute,$p1,$p2,Success" >> $CSV_FILE
+    [ -z "$recompute" ] && recompute=0
+    [ -z "$cache_diag" ] && cache_diag=0
+    
+    echo "$alg,$var,$PLATFORM,$runtime,$memory,$recompute,$cache_diag,$p1,$p2,Success" >> $CSV_FILE
 }
 
 # 1. Needleman-Wunsch Sweep
-for seq in 200 400; do
+for seq in 300 600; do
     # Baseline
     log_run "Needleman-Wunsch" "Baseline" "needleman_wunsch" 0 "$seq"
     # SRF Sweep Tile Sizes
