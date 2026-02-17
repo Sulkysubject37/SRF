@@ -32,4 +32,9 @@ for binary in build/*; do
     echo "$algorithm,Baseline,$PLATFORM,$time_us,Success" >> $CSV_FILE
 done
 
+echo "[SRF] Generating performance plots..."
+# Assuming python3 and requirements (pandas, matplotlib) are available in the environment
+# The CI workflow will be updated to ensure these are present.
+python3 benchmarks/plot_results.py
+
 echo "[SRF] Benchmarks finished."
