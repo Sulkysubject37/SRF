@@ -3,20 +3,24 @@
 SRF (Structured Recomputation Framework) is a research project focused on characterizing and implementing structured recomputation strategies for dynamic programming and graph-based algorithms.
 
 ## Project Status
-**Phase 2: SRF Implementation & Parametric Evaluation — COMPLETED**
-- SRF variants (Blocked, Checkpointed, Recompute-Driven) for all 4 core algorithms are implemented.
-- **Parametric Characterization:** Evaluated Runtime vs. Memory trade-offs across macOS, Linux, and Windows.
-- **Verification:** 100% bitwise equivalence between SRF variants and baselines confirmed.
-- Detailed results are available in [docs/PHASE_2_RESULTS.md](docs/PHASE_2_RESULTS.md).
+**Phase 3: Locality & Fixed-Memory Runtime Study — COMPLETED**
+- **Locality-Aware Variants:** Implemented cache-aware tiling and deterministic scheduling strategies.
+- **Fixed-Memory Runtime:** Verified that runtime can be optimized within a static memory budget through better cache management.
+- **Master Analysis:** Final cross-platform results available in [docs/PHASE_3_RESULTS.md](docs/PHASE_3_RESULTS.md).
+
+## Project History
+- **Phase 1:** Baseline Characterization (Correctness & Standard Metrics).
+- **Phase 2:** Functional SRF (Memory Reduction via Recomputation).
+- **Phase 3:** Performance SRF (Locality & Cache Awareness).
 
 ## Repository Structure
-- `baselines/`: Reference implementations of core algorithms.
-- `srf/`: Structured recomputation implementations (O(N) space variants).
-- `docs/`: Phase 1 & 2 Results, SRF Modeling, and Recomputation Strategies.
-- `benchmarks/`: Parametric benchmarking and plot generation suite.
-- `tests/`: Correctness verification (Equivalence testing).
-- `results/`: Raw CI artifacts (git-ignored).
+- `baselines/`: Reference implementations.
+- `srf/`: Locality-aware recomputation implementations.
+- `docs/`: Phase 1, 2, & 3 Results and Theoretical Models.
+- `benchmarks/`: Integrated benchmarking suite.
+- `tests/`: Continuous correctness verification.
+- `results/`: Platform-specific CI artifacts.
 
 ## Validation and Reproducibility
-- **CI-Based Validation:** Automated testing on macOS, Linux, and Windows for every push.
-- **Venv Management:** Python 3.10 environment (`will`) used for data analysis and visualization.
+- **CI-Based Validation:** Every push is tested against macOS, Linux, and Windows runners.
+- **Metric Integrity:** All data generated from actual execution runs (no fabricated data).
