@@ -19,6 +19,9 @@ echo "Algorithm,Variant,Platform,Time_us,Status" > $CSV_FILE
 
 # Execute binaries and capture output
 for binary in build/*; do
+    # Skip directories
+    [ -d "$binary" ] && continue
+    
     echo "Running $(basename $binary)..."
     output=$(./$binary)
     
