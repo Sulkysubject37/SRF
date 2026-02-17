@@ -3,16 +3,30 @@ set -e
 
 echo "[SRF] Starting Benchmarks..."
 
+# Ensure we are in the root directory
+cd "$(dirname "$0")/.."
+
+# Build first
+bash benchmarks/build.sh
+
 # Measurements recorded to benchmark_log.csv
-# Format: Algorithm, Variant, Platform, Time (ms), Status
+# Format: Algorithm,Variant,Platform,Time_us,Status
+CSV_FILE="results/csv/benchmark_log.csv"
+PLATFORM=$(uname)
 
-# Ensure results directory exists
 mkdir -p results/csv
+echo "Algorithm,Variant,Platform,Time_us,Status" > $CSV_FILE
 
-# Clear existing results for a fresh run
-# echo "Algorithm,Variant,Platform,Time_ms,Status" > results/csv/benchmark_log.csv
-
-# Placeholder for actual measurements
-# (Measurements will be added in Phase 1)
+# Execute binaries and capture output
+for binary in build/*; do
+    echo "Running $(basename $binary)..."
+    output=$(./$binary)
+    
+    # Parse output using grep/sed
+    algorithm=$(echo "$output" | grep "Algorithm:" | cut -d' ' -f2-)
+    time_us=$(echo "$output" | grep "Time_us:" | cut -d' ' -f2-)
+    
+    echo "$algorithm,Baseline,$PLATFORM,$time_us,Success" >> $CSV_FILE
+done
 
 echo "[SRF] Benchmarks finished."
