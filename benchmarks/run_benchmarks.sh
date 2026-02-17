@@ -71,6 +71,7 @@ for nodes in 2000; do
 done
 
 echo "[SRF] Generating Phase 3 plots..."
+# Important: ensure correct python/venv use if needed
 python3 benchmarks/generate_plots.py
 
 echo "[SRF] Benchmarks finished."
