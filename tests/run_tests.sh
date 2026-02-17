@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "[SRF] Starting Correctness Tests..."
+echo "[SRF] Starting Correctness Tests (Phase 3)..."
 
 # Ensure we are in the root directory
 cd "$(dirname "$0")/.."
@@ -12,18 +12,18 @@ bash benchmarks/build.sh
 # Helper to run binaries with optional .exe
 run_bin() {
     if [ -f "./build/$1.exe" ]; then
-        ./build/$1.exe "$2" "$3"
+        ./build/$1.exe "$2" "$3" "$4"
     elif [ -f "./build/$1" ]; then
-        ./build/$1 "$2" "$3"
+        ./build/$1 "$2" "$3" "$4"
     else
         echo "[ERROR] Binary $1 not found in build/"
         exit 1
     fi
 }
 
-# 1. Needleman-Wunsch Equivalence
+# 1. Needleman-Wunsch Equivalence (Phase 3 Params)
 BASE_NW=$(run_bin needleman_wunsch 300 | grep "Result_Check:" | cut -d' ' -f2-)
-SRF_NW=$(run_bin nw_blocked 300 20 | grep "Result_Check:" | cut -d' ' -f2-)
+SRF_NW=$(run_bin nw_blocked 300 20 0 | grep "Result_Check:" | cut -d' ' -f2-)
 if [ "$BASE_NW" != "$SRF_NW" ]; then
     echo "[FAIL] Needleman-Wunsch: Baseline $BASE_NW != SRF $SRF_NW"
     exit 1
@@ -32,7 +32,7 @@ echo "[PASS] Needleman-Wunsch Equivalence"
 
 # 2. Viterbi Equivalence
 BASE_V=$(run_bin viterbi 500 | grep "Result_Check:" | cut -d' ' -f2-)
-SRF_V=$(run_bin viterbi_checkpoint 500 10 | grep "Result_Check:" | cut -d' ' -f2-)
+SRF_V=$(run_bin viterbi_checkpoint 500 10 0 | grep "Result_Check:" | cut -d' ' -f2-)
 if [ "$BASE_V" != "$SRF_V" ]; then
     echo "[FAIL] Viterbi: Baseline $BASE_V != SRF $SRF_V"
     exit 1
@@ -41,7 +41,7 @@ echo "[PASS] Viterbi Equivalence"
 
 # 3. Forward Equivalence
 BASE_F=$(run_bin forward 500 | grep "Result_Check:" | cut -d' ' -f2-)
-SRF_F=$(run_bin forward_checkpoint 500 10 | grep "Result_Check:" | cut -d' ' -f2-)
+SRF_F=$(run_bin forward_checkpoint 500 10 0 | grep "Result_Check:" | cut -d' ' -f2-)
 if [ "$BASE_F" != "$SRF_F" ]; then
     echo "[FAIL] Forward: Baseline $BASE_F != SRF $SRF_F"
     exit 1
@@ -50,7 +50,7 @@ echo "[PASS] Forward Equivalence"
 
 # 4. Graph-DP Equivalence
 BASE_G=$(run_bin graph_dp 1000 | grep "Result_Check:" | cut -d' ' -f2-)
-SRF_G=$(run_bin graph_recompute 1000 2 | grep "Result_Check:" | cut -d' ' -f2-)
+SRF_G=$(run_bin graph_recompute 1000 2 0 | grep "Result_Check:" | cut -d' ' -f2-)
 if [ "$BASE_G" != "$SRF_G" ]; then
     echo "[FAIL] Graph-DP: Baseline $BASE_G != SRF $SRF_G"
     exit 1

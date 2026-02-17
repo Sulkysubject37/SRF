@@ -4,6 +4,7 @@
 #include <iostream>
 #include <chrono>
 #include <atomic>
+#include <cmath>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -16,12 +17,42 @@ namespace srf {
 
 struct Metrics {
     std::atomic<long long> recompute_events{0};
-    
-    void reset() { recompute_events = 0; }
+    std::atomic<long long> working_set_bytes{0};
+    std::atomic<long long> tile_reuse_count{0};
+    std::atomic<long long> total_dist_metric{0};
+
+    void reset() {
+        recompute_events = 0;
+        working_set_bytes = 0;
+        tile_reuse_count = 0;
+        total_dist_metric = 0;
+    }
     void record_recompute(int count = 1) { recompute_events += count; }
+    void update_working_set(size_t bytes) {
+        long long current = working_set_bytes;
+        while (bytes > (size_t)current && !working_set_bytes.compare_exchange_weak(current, (long long)bytes));
+    }
+    void record_reuse() { tile_reuse_count++; }
+    void record_dist(long long d) { total_dist_metric += d; }
 };
 
 static Metrics global_metrics;
+
+// Lightweight Cache Model
+struct CacheModel {
+    size_t budget_bytes;
+    size_t cell_size;
+
+    CacheModel(size_t budget_kb, size_t cell_sz) 
+        : budget_bytes(budget_kb * 1024), cell_size(cell_sz) {}
+
+    // Suggests a TileSize such that TileSize^2 * cell_size <= budget
+    int suggest_tile_size() const {
+        if (budget_bytes == 0) return 20; // Default fallback
+        int side = static_cast<int>(std::sqrt(budget_bytes / cell_size));
+        return (side > 2) ? side : 2;
+    }
+};
 
 size_t get_peak_rss() {
 #if defined(_WIN32)
