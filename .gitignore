@@ -1,1 +1,6 @@
 build/
+results/benchmark-results-*
+results/plots/*.png
+results/csv/benchmark_log.csv
+.DS_Store
+*.exe
