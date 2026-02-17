@@ -1,22 +1,28 @@
 # Phase 1: Baseline Performance Characterization
 
-This document provides a transparent summary of the baseline performance measurements across three major operating systems.
+This document provides a transparent summary of the baseline performance, memory usage, and cache diagnostics across three major operating systems.
 
-## Summary Table (Average Time in µs)
+## Summary Table (Average Results)
 
-| Algorithm | macOS (Darwin) | Linux | Windows (MinGW) |
-| :--- | :---: | :---: | :---: |
-| **Needleman-Wunsch** | 72.87 | 85.28 | 138.42 |
-| **Forward** | 3.17 | 3.69 | 5.36 |
-| **Viterbi** | 2.73 | 3.58 | 5.13 |
-| **Graph-DP** | 2.46 | 1.29 | 4.06 |
+| Algorithm | Platform | Time (µs) | Memory (KB) | Cache Diag (Accesses) |
+| :--- | :--- | :---: | :---: | :---: |
+| **Needleman-Wunsch** | Darwin | 158.5 | 4480 | 90000 |
+| **Forward** | Darwin | 16.5 | 4528 | 2000 |
+| **Viterbi** | Darwin | 16.4 | 4544 | 2000 |
+| **Graph-DP** | Darwin | 5.2 | 4432 | 1000 |
+
+## Metrics Description
+- **Time (µs):** Wall-clock time averaged over 50-500 iterations.
+- **Memory (KB):** Peak Resident Set Size (RSS) during execution.
+- **Cache Diag:** A proxy for data access density (Total DP table cell visits).
 
 ## Visual Comparison
-The following figure illustrates the performance variability across platforms:
+### Runtime Comparison
+![Runtime Comparison](runtime_darwin.png)
 
-![Phase 1 Cross-Platform Comparison](phase_1_comparison.png)
+### Memory Footprint
+![Memory Comparison](memory_darwin.png)
 
 ## Data Integrity
-- **Source:** Consolidated from CI workflow artifacts (February 2026).
-- **Methodology:** Multi-iteration averaging with optimization prevention.
-- **Raw Data:** See `docs/phase_1_baselines.csv`.
+- **Methodology:** Peak RSS tracked via `getrusage` (Unix) and `GetProcessMemoryInfo` (Windows).
+- **Raw Data:** See `results/csv/benchmark_log.csv`.

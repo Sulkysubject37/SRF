@@ -4,64 +4,40 @@ import os
 
 def plot_results(csv_path, output_dir):
     if not os.path.exists(csv_path):
-        print(f"Error: {csv_path} not found.")
         return
 
     try:
         df = pd.read_csv(csv_path)
-    except Exception as e:
-        print(f"Error reading CSV: {e}")
+    except:
         return
 
     if df.empty:
-        print("CSV is empty, skipping plot.")
         return
 
-    # Filter out any failed runs
-    if 'Status' in df.columns:
-        df = df[df['Status'] == 'Success']
-
-    if df.empty:
-        print("No successful runs to plot.")
-        return
-
-    # Sort algorithms alphabetically for consistent ordering
-    df = df.sort_values(by='Algorithm')
-
-    # Use a clean style
-    plt.style.use('bmh')
-    
-    fig, ax = plt.subplots(figsize=(12, 7))
-    
-    # Plotting Time_us vs Algorithm
-    bars = ax.bar(df['Algorithm'], df['Time_us'], color='steelblue', edgecolor='black', alpha=0.8)
-    
-    # Add values on top of bars
-    for bar in bars:
-        height = bar.get_height()
-        ax.annotate(f'{height:.2f}',
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),  # 3 points vertical offset
-                    textcoords="offset points",
-                    ha='center', va='bottom', fontsize=10)
-
-    ax.set_xlabel('Algorithm', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Execution Time (avg microseconds)', fontsize=12, fontweight='bold')
-    platform = df['Platform'].iloc[0]
-    ax.set_title(f"SRF Baseline Performance Characterization\nPlatform: {platform}", fontsize=14, fontweight='bold')
-    
-    plt.xticks(rotation=30, ha='right', fontsize=11)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.tight_layout()
-
+    df = df[df['Status'] == 'Success'].sort_values(by='Algorithm')
     os.makedirs(output_dir, exist_ok=True)
-    platform_name = platform.replace(' ', '_').lower()
-    output_path = os.path.join(output_dir, f"baseline_performance_{platform_name}.png")
-    
-    plt.savefig(output_path, dpi=300)
-    print(f"Plot saved to {output_path}")
+    platform = df['Platform'].iloc[0].replace(' ', '_').lower()
+
+    # 1. Runtime Plot
+    plt.style.use('bmh')
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(df['Algorithm'], df['Time_us'], color='steelblue', alpha=0.8)
+    ax.set_ylabel('Execution Time (µs)')
+    ax.set_title(f'Runtime Baseline - {df["Platform"].iloc[0]}')
+    plt.xticks(rotation=30, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f"runtime_{platform}.png"), dpi=300)
+    plt.close()
+
+    # 2. Memory Plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(df['Algorithm'], df['Memory_kb'], color='indianred', alpha=0.8)
+    ax.set_ylabel('Peak Memory Usage (KB)')
+    ax.set_title(f'Memory Baseline - {df["Platform"].iloc[0]}')
+    plt.xticks(rotation=30, ha='right')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f"memory_{platform}.png"), dpi=300)
+    plt.close()
 
 if __name__ == "__main__":
-    csv_file = "results/csv/benchmark_log.csv"
-    plot_dir = "results/plots"
-    plot_results(csv_file, plot_dir)
+    plot_results("results/csv/benchmark_log.csv", "results/plots")

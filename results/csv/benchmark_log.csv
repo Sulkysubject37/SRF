@@ -1,5 +1,5 @@
-Algorithm,Variant,Platform,Time_us,Status
-Forward,Baseline,Darwin,2.6,Success
-Graph-DP,Baseline,Darwin,2.286,Success
-Needleman-Wunsch,Baseline,Darwin,78.07,Success
-Viterbi,Baseline,Darwin,2.883,Success
+Algorithm,Variant,Platform,Time_us,Memory_kb,Cache_Hits_Diagnostic,Status
+Forward,Baseline,Darwin,16.666,1312,2000,Success
+Graph-DP,Baseline,Darwin,2.456,1296,1000,Success
+Needleman-Wunsch,Baseline,Darwin,313.12,1696,90000,Success
+Viterbi,Baseline,Darwin,14.644,1296,2000,Success

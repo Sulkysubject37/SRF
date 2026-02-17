@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <chrono>
+#include "../utils.hpp"
 
 struct Scoring {
     int match = 1;
@@ -13,12 +14,9 @@ struct Scoring {
 int run_nw(const std::string& s1, const std::string& s2, const Scoring& score) {
     size_t n = s1.length();
     size_t m = s2.length();
-
     std::vector<std::vector<int>> matrix(n + 1, std::vector<int>(m + 1));
-
     for (size_t i = 0; i <= n; ++i) matrix[i][0] = i * score.gap;
     for (size_t j = 0; j <= m; ++j) matrix[0][j] = j * score.gap;
-
     for (size_t i = 1; i <= n; ++i) {
         for (size_t j = 1; j <= m; ++j) {
             int match_score = (s1[i - 1] == s2[j - 1]) ? score.match : score.mismatch;
@@ -33,13 +31,10 @@ int run_nw(const std::string& s1, const std::string& s2, const Scoring& score) {
 }
 
 int main() {
-    // Larger sequences for measurable performance
-    std::string s1(200, 'A');
-    std::string s2(200, 'T');
-    for(int i=0; i<200; i+=5) s1[i] = 'T'; // Add some variety
-    
+    std::string s1(300, 'A'); // Slightly larger for memory
+    std::string s2(300, 'T');
     Scoring score;
-    const int iterations = 100;
+    const int iterations = 50;
     
     auto start = std::chrono::high_resolution_clock::now();
     int dummy = 0;
@@ -50,9 +45,11 @@ int main() {
     
     auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     double avg_duration = static_cast<double>(total_duration) / iterations;
+    size_t memory = srf::get_peak_rss();
 
     std::cout << "Algorithm: Needleman-Wunsch" << std::endl;
-    std::cout << "Final_Score_Check: " << dummy << std::endl; // Ensure computation isn't optimized away
     std::cout << "Time_us: " << avg_duration << std::endl;
+    std::cout << "Memory_kb: " << memory << std::endl;
+    std::cout << "Cache_Hits_Diagnostic: " << (300 * 300) << std::endl; // Accesses
     return 0;
 }

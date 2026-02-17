@@ -10,12 +10,12 @@ cd "$(dirname "$0")/.."
 bash benchmarks/build.sh
 
 # Measurements recorded to benchmark_log.csv
-# Format: Algorithm,Variant,Platform,Time_us,Status
+# Format: Algorithm,Variant,Platform,Time_us,Memory_kb,Cache_Hits_Diagnostic,Status
 CSV_FILE="results/csv/benchmark_log.csv"
 PLATFORM=$(uname)
 
 mkdir -p results/csv
-echo "Algorithm,Variant,Platform,Time_us,Status" > $CSV_FILE
+echo "Algorithm,Variant,Platform,Time_us,Memory_kb,Cache_Hits_Diagnostic,Status" > $CSV_FILE
 
 # Execute binaries and capture output
 for binary in build/*; do
@@ -25,16 +25,16 @@ for binary in build/*; do
     echo "Running $(basename $binary)..."
     output=$(./$binary)
     
-    # Parse output using grep/sed
+    # Parse output
     algorithm=$(echo "$output" | grep "Algorithm:" | cut -d' ' -f2-)
     time_us=$(echo "$output" | grep "Time_us:" | cut -d' ' -f2-)
+    memory_kb=$(echo "$output" | grep "Memory_kb:" | cut -d' ' -f2-)
+    cache_diag=$(echo "$output" | grep "Cache_Hits_Diagnostic:" | cut -d' ' -f2-)
     
-    echo "$algorithm,Baseline,$PLATFORM,$time_us,Success" >> $CSV_FILE
+    echo "$algorithm,Baseline,$PLATFORM,$time_us,$memory_kb,$cache_diag,Success" >> $CSV_FILE
 done
 
 echo "[SRF] Generating performance plots..."
-# Assuming python3 and requirements (pandas, matplotlib) are available in the environment
-# The CI workflow will be updated to ensure these are present.
 python3 benchmarks/plot_results.py
 
 echo "[SRF] Benchmarks finished."
