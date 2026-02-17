@@ -38,6 +38,7 @@ int main() {
     size_t memory = srf::get_peak_rss();
 
     std::cout << "Algorithm: Graph-DP" << std::endl;
+    std::cout << "Result: " << dummy << std::endl;
     std::cout << "Time_us: " << avg_duration << std::endl;
     std::cout << "Memory_kb: " << memory << std::endl;
     std::cout << "Cache_Hits_Diagnostic: " << (1000 * 1) << std::endl;

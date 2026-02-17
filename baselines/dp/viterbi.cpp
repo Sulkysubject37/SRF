@@ -40,6 +40,7 @@ int main() {
     size_t memory = srf::get_peak_rss();
 
     std::cout << "Algorithm: Viterbi" << std::endl;
+    std::cout << "Result: " << dummy << std::endl;
     std::cout << "Time_us: " << avg_duration << std::endl;
     std::cout << "Memory_kb: " << memory << std::endl;
     std::cout << "Cache_Hits_Diagnostic: " << (500 * 2 * 2) << std::endl;

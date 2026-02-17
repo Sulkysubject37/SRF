@@ -22,8 +22,8 @@ run_bin() {
 }
 
 # 1. Needleman-Wunsch Equivalence
-BASE_NW=$(run_bin needleman_wunsch | grep "Final_Score_Check:" | cut -d' ' -f2-)
-SRF_NW=$(run_bin nw_blocked 200 20 | grep "Score:" | cut -d' ' -f2-)
+BASE_NW=$(run_bin needleman_wunsch | grep "Score:" | cut -d' ' -f2-)
+SRF_NW=$(run_bin nw_blocked 300 20 | grep "Score:" | cut -d' ' -f2-)
 if [ "$BASE_NW" != "$SRF_NW" ]; then
     echo "[FAIL] Needleman-Wunsch: Baseline $BASE_NW != SRF $SRF_NW"
     exit 1

@@ -48,6 +48,7 @@ int main() {
     size_t memory = srf::get_peak_rss();
 
     std::cout << "Algorithm: Needleman-Wunsch" << std::endl;
+    std::cout << "Score: " << dummy << std::endl;
     std::cout << "Time_us: " << avg_duration << std::endl;
     std::cout << "Memory_kb: " << memory << std::endl;
     std::cout << "Cache_Hits_Diagnostic: " << (300 * 300) << std::endl; // Accesses
