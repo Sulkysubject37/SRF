@@ -4,26 +4,23 @@ SRF (Structured Recomputation Framework) is a research project focused on charac
 
 ## Project Status
 **Phase 4: Backend Abstraction & Scalability — COMPLETED**
-- **Multi-Backend Execution:** Support for both CPU and optional GPU (simulated) backends.
-- **Backend-Agnostic Logic:** SRF recomputation core is decoupled from hardware-specific primitives.
-- **Scalability Study:** Performance characterized for large-scale inputs (up to $N=10000$ for Graph-DP).
-- **Safe Fallback:** Guaranteed CPU execution if GPU hardware or memory is unavailable.
+- **Multi-Backend Execution:** Seamless support for CPU and optional GPU backends.
+- **High Scalability:** Verified performance up to $N=10000$ nodes for Graph-DP.
+- **Global Master Study:** Final cross-platform performance profile available in [docs/PHASE_4_RESULTS.md](docs/PHASE_4_RESULTS.md).
 
 ## Project History
-- **Phase 1:** Baseline Characterization.
-- **Phase 2:** Functional SRF (Memory Reduction).
+- **Phase 1:** Baseline Characterization (Correctness & Ground Truth).
+- **Phase 2:** Functional SRF (Memory Footprint Reduction).
 - **Phase 3:** Performance SRF (Locality & Cache Awareness).
-- **Phase 4:** Architectural SRF (Backend Abstraction & Scale).
+- **Phase 4:** Architectural SRF (Multi-Backend & Scale).
 
 ## Repository Structure
-- `baselines/`: Reference implementations.
-- `srf/`: Locality-aware, backend-agnostic recomputation core.
-    - `backends/`: Execution primitives for CPU and GPU.
-    - `runtime/`: Dynamic backend selector.
-- `docs/`: Results and technical references for all phases.
-- `benchmarks/`: Scalability-aware benchmarking suite.
-- `tests/`: Multi-backend correctness verification.
+- `baselines/`: Original $O(NM)$ reference implementations.
+- `srf/`: Backend-agnostic, locality-aware recomputation implementations.
+- `docs/`: Phase Results (1-4), Models, and Technical References.
+- `benchmarks/`: Multi-backend, scalability-aware benchmarking suite.
+- `tests/`: Bit-exact equivalence verification.
 
 ## Validation and Reproducibility
-- **CI-Based Validation:** Every push is tested across macOS, Linux, and Windows.
-- **Multi-Backend CI:** The CI pipeline builds both backends and falls back to CPU for execution.
+- **CI-Based Validation:** Every push is verified on macOS, Linux, and Windows.
+- **Cross-Platform Integrity:** All measurements are derived from actual execution runs on standard CI environments.
