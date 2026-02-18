@@ -7,7 +7,6 @@
 
 namespace srf {
 
-// Simulated GPU Backend for environments without actual GPU hardware
 class GpuBackend : public IBackend {
 private:
     BackendMetrics metrics;
@@ -18,13 +17,11 @@ public:
 
     BackendType type() const override { return BackendType::GPU; }
 
-    void* allocate_device(size_t size) override { 
-        return malloc(size); 
-    }
+    void* allocate_device(size_t size) override { return malloc(size); }
     void free_device(void* ptr) override { free(ptr); }
     
     void copy_to_device(void* dst, const void* src, size_t size) override { 
-        metrics.transfer_overhead_us += 10; // Simulated constant overhead
+        metrics.transfer_overhead_us += 10;
         memcpy(dst, src, size); 
     }
     void copy_to_host(void* dst, const void* src, size_t size) override { 
@@ -37,13 +34,22 @@ public:
         return std::max({diag + match_score, top + gap_penalty, left + gap_penalty});
     }
 
-    double hmm_step_compute(const std::vector<double>& prev_alpha, const std::vector<double>& trans_row, double emission) override {
+    double forward_step_compute(const std::vector<double>& prev_alpha, const std::vector<double>& trans_row, double emission) override {
         metrics.kernel_launch_count++;
         double sum = 0.0;
         for (size_t i = 0; i < prev_alpha.size(); ++i) {
             sum += prev_alpha[i] * trans_row[i] * emission;
         }
         return sum;
+    }
+
+    double viterbi_step_compute(const std::vector<double>& prev_v, const std::vector<double>& trans_row, double emission) override {
+        metrics.kernel_launch_count++;
+        double max_val = -1.0;
+        for (size_t i = 0; i < prev_v.size(); ++i) {
+            max_val = std::max(max_val, prev_v[i] * trans_row[i] * emission);
+        }
+        return max_val;
     }
 
     int graph_node_compute(const std::vector<int>& predecessor_dists, const std::vector<int>& weights) override {

@@ -34,12 +34,8 @@ double viterbi_locality_aware(const std::vector<Observation>& obs, int K_base, i
         
         std::vector<double> next_V(S);
         for (size_t s = 0; s < S; ++s) {
-            // Note: HMM step compute for Viterbi would normally use max instead of sum.
-            // For simplicity in this backend interface, we use the same primitive but 
-            // the backend should decide based on a flag or separate primitive.
-            // Let's stick to the interface defined.
             std::vector<double> trans_row = {trans_p[0][s], trans_p[1][s]};
-            next_V[s] = backend->hmm_step_compute(V, trans_row, emit_p[s][obs[t]]);
+            next_V[s] = backend->viterbi_step_compute(V, trans_row, emit_p[s][obs[t]]);
         }
         V = next_V;
         if (is_checkpoint) checkpoints[t / K] = V;

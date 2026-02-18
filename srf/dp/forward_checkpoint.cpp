@@ -36,7 +36,7 @@ double forward_locality_aware(const std::vector<Observation>& obs, int K_base, i
         for (size_t s = 0; s < S; ++s) {
             std::vector<double> trans_row = {trans_p[0][s], trans_p[1][s]};
             // Use backend primitive
-            next_alpha[s] = backend->hmm_step_compute(alpha, trans_row, emit_p[s][obs[t]]);
+            next_alpha[s] = backend->forward_step_compute(alpha, trans_row, emit_p[s][obs[t]]);
         }
         alpha = next_alpha;
         if (is_checkpoint) checkpoints[t / K] = alpha;

@@ -31,7 +31,8 @@ public:
 
     // Primitives
     virtual int nw_cell_compute(int diag, int top, int left, int match_score, int gap_penalty) = 0;
-    virtual double hmm_step_compute(const std::vector<double>& prev_alpha, const std::vector<double>& trans_row, double emission) = 0;
+    virtual double forward_step_compute(const std::vector<double>& prev_alpha, const std::vector<double>& trans_row, double emission) = 0;
+    virtual double viterbi_step_compute(const std::vector<double>& prev_v, const std::vector<double>& trans_row, double emission) = 0;
     virtual int graph_node_compute(const std::vector<int>& predecessor_dists, const std::vector<int>& weights) = 0;
 
     virtual BackendMetrics get_metrics() const = 0;

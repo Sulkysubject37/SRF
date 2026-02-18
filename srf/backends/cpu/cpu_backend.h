@@ -20,12 +20,20 @@ public:
         return std::max({diag + match_score, top + gap_penalty, left + gap_penalty});
     }
 
-    double hmm_step_compute(const std::vector<double>& prev_alpha, const std::vector<double>& trans_row, double emission) override {
+    double forward_step_compute(const std::vector<double>& prev_alpha, const std::vector<double>& trans_row, double emission) override {
         double sum = 0.0;
         for (size_t i = 0; i < prev_alpha.size(); ++i) {
             sum += prev_alpha[i] * trans_row[i] * emission;
         }
         return sum;
+    }
+
+    double viterbi_step_compute(const std::vector<double>& prev_v, const std::vector<double>& trans_row, double emission) override {
+        double max_val = -1.0;
+        for (size_t i = 0; i < prev_v.size(); ++i) {
+            max_val = std::max(max_val, prev_v[i] * trans_row[i] * emission);
+        }
+        return max_val;
     }
 
     int graph_node_compute(const std::vector<int>& predecessor_dists, const std::vector<int>& weights) override {
