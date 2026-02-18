@@ -1,4 +1,4 @@
-name: SRF Pipeline (Phase 3)
+name: SRF Pipeline
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
         if: runner.os == 'Windows'
         run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
 
-      - name: Run CI Entrypoint (Phase 3)
+      - name: Run CI Entrypoint
         shell: bash
         run: |
           chmod +x ci/ci_entrypoint.sh
