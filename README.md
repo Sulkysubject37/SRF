@@ -3,24 +3,25 @@
 SRF (Structured Recomputation Framework) is a research project focused on characterizing and implementing structured recomputation strategies for dynamic programming and graph-based algorithms.
 
 ## Project Status
-**Phase 4: Backend Abstraction & Scalability — COMPLETED**
-- **Multi-Backend Execution:** Seamless support for CPU and optional GPU backends.
-- **High Scalability:** Verified performance up to $N=10000$ nodes for Graph-DP.
-- **Global Master Study:** Final cross-platform performance profile available in [docs/PHASE_4_RESULTS.md](docs/PHASE_4_RESULTS.md).
+**Phase 5-A: Granularity Control — COMPLETED**
+- **Atomic Unit Management:** Explicit control over recomputation granularity (Tiles, Segments, Groups).
+- **Unit-Level Instrumentation:** Tracking of unit recomputation events and reuse proxies.
+- **Overhead Amortization:** Characterized the relationship between unit size and architectural efficiency.
+- **Multi-Backend Scale:** Granularity policies are fully integrated with CPU and optional GPU backends.
 
 ## Project History
 - **Phase 1:** Baseline Characterization (Correctness & Ground Truth).
 - **Phase 2:** Functional SRF (Memory Footprint Reduction).
 - **Phase 3:** Performance SRF (Locality & Cache Awareness).
 - **Phase 4:** Architectural SRF (Multi-Backend & Scale).
+- **Phase 5-A:** Granularity SRF (Unit-Level Amortization).
 
 ## Repository Structure
-- `baselines/`: Original $O(NM)$ reference implementations.
-- `srf/`: Backend-agnostic, locality-aware recomputation implementations.
-- `docs/`: Phase Results (1-4), Models, and Technical References.
-- `benchmarks/`: Multi-backend, scalability-aware benchmarking suite.
-- `tests/`: Bit-exact equivalence verification.
+- `srf/granularity/`: Granularity policy definitions and grouping logic.
+- `srf/`: Backend-agnostic, locality-aware, and granularity-aware recomputation implementations.
+- `docs/`: Technical references, including Phase 5-A Model and Results.
+- `benchmarks/`: Granularity-aware benchmarking suite.
 
 ## Validation and Reproducibility
-- **CI-Based Validation:** Every push is verified on macOS, Linux, and Windows.
-- **Cross-Platform Integrity:** All measurements are derived from actual execution runs on standard CI environments.
+- **Correctness:** Bit-exact equivalence verified across all granularity unit sizes.
+- **CI/CD:** Automated granularity sweeps on macOS, Linux, and Windows.
