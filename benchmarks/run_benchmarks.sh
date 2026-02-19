@@ -23,11 +23,11 @@ log_run() {
     local bin=$3
     local p1=$4 # TileSize / K-Interval / Depth
     local p2=$5 # SeqLen / NumNodes
-    local p3=$6 # Granularity UnitSize
+    local p3=$6 # Granularity UnitSize (G)
     local backend_env=$7 # SRF_FORCE_GPU=1 etc.
     local gpu_budget=${8:-1024}
     
-    echo "Running $alg ($var) P1=$p1 P2=$p2 Granularity=$p3 Backend=$backend_env..."
+    echo "Running $alg ($var) P1=$p1 P2=$p2 G=$p3 Backend=$backend_env..."
     local output=$(env $backend_env ./build/$bin "$p2" "$p1" "$p3" "$gpu_budget")
     
     # Use -w to avoid matching Unit_Recompute_Events when searching for Recompute_Events
@@ -63,20 +63,20 @@ log_run() {
     echo "$alg,$var,$PLATFORM,$runtime,$memory,$recompute,0,$working_set,0,$p1,$p2,$p3,$backend_type,$device_budget,$transfer,$kernels,$g_type,$unit_size,$unit_recompute,$unit_reuse,Success" >> $CSV_FILE
 }
 
-# Granularity Sweeps
+# Granularity Sweeps (including G=1 as non-granular baseline)
 for backend in "SRF_FORCE_CPU=1" "SRF_FORCE_GPU=1"; do
-    # 1. Needleman-Wunsch: Tile Granularity Sweep
-    for g_size in 10 20 40; do
+    # 1. Needleman-Wunsch: Tile Granularity Sweep (G=1, 10, 20, 40)
+    for g_size in 1 10 20 40; do
         log_run "Needleman-Wunsch" "SRF-GranularityAware" "nw_blocked" 20 600 "$g_size" "$backend"
     done
 
-    # 2. HMM Forward: Segment Granularity Sweep
-    for g_size in 2 10 50; do
+    # 2. HMM Forward: Segment Granularity Sweep (G=1, 2, 10, 50)
+    for g_size in 1 2 10 50; do
         log_run "Forward" "SRF-GranularityAware" "forward_checkpoint" 20 1000 "$g_size" "$backend"
     done
 
-    # 3. Graph-DP: Group Granularity Sweep
-    for g_size in 5 20 100; do
+    # 3. Graph-DP: Group Granularity Sweep (G=1, 5, 20, 100)
+    for g_size in 1 5 20 100; do
         log_run "Graph-DP" "SRF-GranularityAware" "graph_recompute" 4 2000 "$g_size" "$backend"
     done
 done

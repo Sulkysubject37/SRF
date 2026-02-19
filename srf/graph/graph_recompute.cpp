@@ -11,12 +11,12 @@ struct Edge {
     int weight;
 };
 
-int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>& adj, int recompute_depth, int unit_size, srf::IBackend* backend) {
+int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>& adj, int recompute_depth, int G, srf::IBackend* backend) {
     std::vector<int> dist(num_nodes, 1e9);
     dist[0] = 0;
     srf::global_metrics.update_working_set(dist.size() * sizeof(int));
 
-    srf::GranularityPolicy policy(srf::GranularityType::GROUP, unit_size);
+    srf::GranularityPolicy policy(srf::GranularityType::GROUP, G);
 
     for (int u = 0; u < num_nodes; ++u) {
         if (dist[u] == 1e9) continue;
@@ -40,7 +40,7 @@ int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>&
 int main(int argc, char* argv[]) {
     int num_nodes = (argc > 1) ? std::stoi(argv[1]) : 1000;
     int recompute_depth = (argc > 2) ? std::stoi(argv[2]) : 2;
-    int unit_size = (argc > 3) ? std::stoi(argv[3]) : 10;
+    int G = (argc > 3) ? std::stoi(argv[3]) : 1;
     size_t gpu_budget = (argc > 4) ? std::stoul(argv[4]) : 1024;
 
     auto backend = srf::BackendSelector::select(gpu_budget);
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
     srf::global_metrics.reset();
     backend->reset_metrics();
     auto start_time = std::chrono::high_resolution_clock::now();
-    int result = graph_granularity_aware(num_nodes, adj, recompute_depth, unit_size, backend.get());
+    int result = graph_granularity_aware(num_nodes, adj, recompute_depth, G, backend.get());
     auto end_time = std::chrono::high_resolution_clock::now();
     
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -68,13 +68,12 @@ int main(int argc, char* argv[]) {
     std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
     std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
     std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
-    std::cout << "Granularity_Unit_Size: " << unit_size << std::endl;
+    std::cout << "Granularity_Unit_Size: " << G << std::endl;
     std::cout << "Transfer_Overhead_us: " << b_metrics.transfer_overhead_us << std::endl;
-    // Note: Kernel count depends on how many times compute primitives are called.
     std::cout << "Kernel_Launch_Count: " << b_metrics.kernel_launch_count << std::endl;
     std::cout << "Param_1: " << recompute_depth << std::endl;
     std::cout << "Param_2: " << num_nodes << std::endl;
-    std::cout << "Param_3: " << unit_size << std::endl;
+    std::cout << "Param_3: " << G << std::endl;
 
     return 0;
 }
