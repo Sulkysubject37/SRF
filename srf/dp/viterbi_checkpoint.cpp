@@ -7,13 +7,13 @@
 #include "../runtime/backend_selector.h"
 #include "../granularity/granularity_policy.h"
 
-enum Observation { Walk, Shop, Clean, Unknown };
+enum Observation { Walk, Shop, Clean, OBS_UNKNOWN };
 
 Observation char_to_obs(char c) {
     if (c == 'A') return Walk;
     if (c == 'C') return Shop;
     if (c == 'G') return Clean;
-    return Unknown;
+    return OBS_UNKNOWN;
 }
 
 std::vector<Observation> load_observations(const std::string& path) {
