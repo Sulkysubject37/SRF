@@ -10,7 +10,6 @@ cd "$(dirname "$0")/.."
 bash benchmarks/build.sh
 
 # CSV Schema Extension for Phase 5-A
-# algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,device_memory_budget,transfer_overhead_us,kernel_launch_count,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,status
 CSV_FILE="results/csv/benchmark_log.csv"
 PLATFORM=$(uname)
 
@@ -31,18 +30,19 @@ log_run() {
     echo "Running $alg ($var) P1=$p1 P2=$p2 Granularity=$p3 Backend=$backend_env..."
     local output=$(env $backend_env ./build/$bin "$p2" "$p1" "$p3" "$gpu_budget")
     
-    local runtime=$(echo "$output" | grep "Time_us:" | cut -d' ' -f2-)
-    local memory=$(echo "$output" | grep "Memory_kb:" | cut -d' ' -f2-)
-    local recompute=$(echo "$output" | grep "Recompute_Events:" | cut -d' ' -f2-)
-    local unit_recompute=$(echo "$output" | grep "Unit_Recompute_Events:" | cut -d' ' -f2-)
-    local unit_reuse=$(echo "$output" | grep "Unit_Reuse_Proxy:" | cut -d' ' -f2-)
-    local unit_size=$(echo "$output" | grep "Granularity_Unit_Size:" | cut -d' ' -f2-)
+    # Use -w to avoid matching Unit_Recompute_Events when searching for Recompute_Events
+    local runtime=$(echo "$output" | grep -w "Time_us:" | cut -d' ' -f2- | tr -d '\r')
+    local memory=$(echo "$output" | grep -w "Memory_kb:" | cut -d' ' -f2- | tr -d '\r')
+    local recompute=$(echo "$output" | grep -w "Recompute_Events:" | cut -d' ' -f2- | tr -d '\r')
+    local unit_recompute=$(echo "$output" | grep -w "Unit_Recompute_Events:" | cut -d' ' -f2- | tr -d '\r')
+    local unit_reuse=$(echo "$output" | grep -w "Unit_Reuse_Proxy:" | cut -d' ' -f2- | tr -d '\r')
+    local unit_size=$(echo "$output" | grep -w "Granularity_Unit_Size:" | cut -d' ' -f2- | tr -d '\r')
     
-    local working_set=$(echo "$output" | grep "Working_Set_Proxy:" | cut -d' ' -f2-)
-    local backend_type=$(echo "$output" | grep "Backend:" | cut -d' ' -f2-)
-    local transfer=$(echo "$output" | grep "Transfer_Overhead_us:" | cut -d' ' -f2-)
-    local kernels=$(echo "$output" | grep "Kernel_Launch_Count:" | cut -d' ' -f2-)
-    local device_budget=$(echo "$output" | grep "Device_Memory_Budget_kb:" | cut -d' ' -f2-)
+    local working_set=$(echo "$output" | grep -w "Working_Set_Proxy:" | cut -d' ' -f2- | tr -d '\r')
+    local backend_type=$(echo "$output" | grep -w "Backend:" | cut -d' ' -f2- | tr -d '\r')
+    local transfer=$(echo "$output" | grep -w "Transfer_Overhead_us:" | cut -d' ' -f2- | tr -d '\r')
+    local kernels=$(echo "$output" | grep -w "Kernel_Launch_Count:" | cut -d' ' -f2- | tr -d '\r')
+    local device_budget=$(echo "$output" | grep -w "Device_Memory_Budget_kb:" | cut -d' ' -f2- | tr -d '\r')
 
     [ -z "$recompute" ] && recompute=0
     [ -z "$unit_recompute" ] && unit_recompute=0
