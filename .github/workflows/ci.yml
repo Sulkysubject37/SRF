@@ -43,7 +43,6 @@ jobs:
           chmod +x ci/ci_entrypoint.sh
           bash ci/ci_entrypoint.sh
           # Phase 6: Prepare real biological datasets
-          source will/bin/activate
           bash scripts/download_datasets.sh
           python3 scripts/prepare_sequences.py
           python3 scripts/prepare_graphs.py
