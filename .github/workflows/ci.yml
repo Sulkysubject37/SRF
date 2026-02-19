@@ -42,8 +42,13 @@ jobs:
         run: |
           chmod +x ci/ci_entrypoint.sh
           bash ci/ci_entrypoint.sh
-          bash benchmarks/run_benchmarks.sh
-          # Phase 5-B: Run predictive analysis (already included in run_benchmarks.sh but keeping explicit for clarity)
+          # Phase 6: Prepare real biological datasets
+          source will/bin/activate
+          bash scripts/download_datasets.sh
+          python3 scripts/prepare_sequences.py
+          python3 scripts/prepare_graphs.py
+          # Run Stress Tests (Filtered by scale in CI)
+          SRF_CI_SCALE_ONLY=1 bash benchmarks/run_benchmarks.sh
           python3 analysis/predictive_analysis.py
 
       - name: Upload Benchmark Results
