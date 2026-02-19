@@ -1,0 +1,6 @@
+scale,length,path_a,path_b
+XS,200,datasets/sequences/processed/human_xs.txt,datasets/sequences/processed/neand_xs.txt
+S,500,datasets/sequences/processed/human_s.txt,datasets/sequences/processed/neand_s.txt
+M,1000,datasets/sequences/processed/human_m.txt,datasets/sequences/processed/neand_m.txt
+L,2000,datasets/sequences/processed/human_l.txt,datasets/sequences/processed/neand_l.txt
+XL,4000,datasets/sequences/processed/human_xl.txt,datasets/sequences/processed/neand_xl.txt
