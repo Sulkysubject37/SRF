@@ -20,12 +20,20 @@ struct Metrics {
     std::atomic<long long> working_set_bytes{0};
     std::atomic<long long> tile_reuse_count{0};
     std::atomic<long long> total_dist_metric{0};
+    
+    // Phase 5-A: Granularity tracking
+    std::atomic<long long> unit_recompute_events{0};
+    std::atomic<long long> last_unit_id{-1};
+    std::atomic<long long> unit_reuse_proxy{0};
 
     void reset() {
         recompute_events = 0;
         working_set_bytes = 0;
         tile_reuse_count = 0;
         total_dist_metric = 0;
+        unit_recompute_events = 0;
+        last_unit_id = -1;
+        unit_reuse_proxy = 0;
     }
     void record_recompute(int count = 1) { recompute_events += count; }
     void update_working_set(size_t bytes) {
@@ -34,6 +42,15 @@ struct Metrics {
     }
     void record_reuse() { tile_reuse_count++; }
     void record_dist(long long d) { total_dist_metric += d; }
+
+    void record_unit_recompute(long long unit_id) {
+        long long prev = last_unit_id.exchange(unit_id);
+        if (unit_id != prev) {
+            unit_recompute_events++;
+        } else {
+            unit_reuse_proxy++;
+        }
+    }
 };
 
 static Metrics global_metrics;

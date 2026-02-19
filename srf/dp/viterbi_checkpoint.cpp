@@ -3,10 +3,11 @@
 #include <chrono>
 #include "../core/srf_utils.hpp"
 #include "../runtime/backend_selector.h"
+#include "../granularity/granularity_policy.h"
 
 enum Observation { Walk, Shop, Clean };
 
-double viterbi_locality_aware(const std::vector<Observation>& obs, int K_base, int locality_mode, srf::IBackend* backend) {
+double viterbi_granularity_aware(const std::vector<Observation>& obs, int K_base, int unit_size, srf::IBackend* backend) {
     double start_p[] = {0.6, 0.4};
     double trans_p[2][2] = {{0.7, 0.3}, {0.4, 0.6}};
     double emit_p[2][3] = {{0.1, 0.4, 0.5}, {0.6, 0.3, 0.1}};
@@ -14,9 +15,7 @@ double viterbi_locality_aware(const std::vector<Observation>& obs, int K_base, i
     size_t S = 2;
 
     int K = K_base;
-    if (locality_mode > 0) {
-        K = (K_base > 4) ? K_base / 2 : 2;
-    }
+    srf::GranularityPolicy policy(srf::GranularityType::SEGMENT, unit_size);
 
     std::vector<std::vector<double>> checkpoints((T / K) + 1, std::vector<double>(S));
     std::vector<double> V(S);
@@ -29,7 +28,7 @@ double viterbi_locality_aware(const std::vector<Observation>& obs, int K_base, i
         bool is_checkpoint = (t % K == 0);
         if (!is_checkpoint) {
             srf::global_metrics.record_recompute(1);
-            srf::global_metrics.record_dist(t % K);
+            srf::global_metrics.record_unit_recompute(policy.get_unit_id(t));
         }
         
         std::vector<double> next_V(S);
@@ -51,7 +50,7 @@ double viterbi_locality_aware(const std::vector<Observation>& obs, int K_base, i
 int main(int argc, char* argv[]) {
     int seq_len = (argc > 1) ? std::stoi(argv[1]) : 500;
     int k_interval = (argc > 2) ? std::stoi(argv[2]) : 10;
-    int loc_mode = (argc > 3) ? std::stoi(argv[3]) : 0;
+    int unit_size = (argc > 3) ? std::stoi(argv[3]) : 5;
     size_t gpu_budget = (argc > 4) ? std::stoul(argv[4]) : 1024;
 
     auto backend = srf::BackendSelector::select(gpu_budget);
@@ -62,25 +61,27 @@ int main(int argc, char* argv[]) {
     srf::global_metrics.reset();
     backend->reset_metrics();
     auto start_time = std::chrono::high_resolution_clock::now();
-    double result = viterbi_locality_aware(obs, k_interval, loc_mode, backend.get());
+    double result = viterbi_granularity_aware(obs, k_interval, unit_size, backend.get());
     auto end_time = std::chrono::high_resolution_clock::now();
     
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     auto b_metrics = backend->get_metrics();
 
     std::cout << "Algorithm: Viterbi" << std::endl;
-    std::cout << "Variant: SRF-LocalityAware" << std::endl;
+    std::cout << "Variant: SRF-GranularityAware" << std::endl;
     std::cout << "Backend: " << (backend->type() == srf::BackendType::GPU ? "gpu" : "cpu") << std::endl;
     std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
+    std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
+    std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
+    std::cout << "Granularity_Unit_Size: " << unit_size << std::endl;
     std::cout << "Transfer_Overhead_us: " << b_metrics.transfer_overhead_us << std::endl;
     std::cout << "Kernel_Launch_Count: " << b_metrics.kernel_launch_count << std::endl;
-    std::cout << "Device_Memory_Budget_kb: " << b_metrics.device_memory_budget_kb << std::endl;
     std::cout << "Param_1: " << k_interval << std::endl;
     std::cout << "Param_2: " << seq_len << std::endl;
-    std::cout << "Param_3: " << loc_mode << std::endl;
+    std::cout << "Param_3: " << unit_size << std::endl;
 
     return 0;
 }
