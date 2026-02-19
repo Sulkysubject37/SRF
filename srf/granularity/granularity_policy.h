@@ -14,7 +14,7 @@ enum class GranularityType {
 class GranularityPolicy {
 public:
     GranularityPolicy(GranularityType type, int unit_size) 
-        : type_(type), unit_size_(unit_size) {}
+        : type_(type), unit_size_(unit_size > 0 ? unit_size : 1) {}
 
     GranularityType type() const { return type_; }
     int unit_size() const { return unit_size_; }
