@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <fstream>
 #include <algorithm>
 #include <chrono>
 #include "../utils.hpp"
@@ -10,6 +11,14 @@ struct Scoring {
     int mismatch = -1;
     int gap = -1;
 };
+
+std::string load_file(const std::string& path) {
+    std::ifstream f(path);
+    if (!f.is_open()) return "";
+    std::string s;
+    f >> s;
+    return s;
+}
 
 int run_nw(const std::string& s1, const std::string& s2, const Scoring& score) {
     size_t n = s1.length();
@@ -31,38 +40,18 @@ int run_nw(const std::string& s1, const std::string& s2, const Scoring& score) {
 }
 
 int main(int argc, char* argv[]) {
-    int seq_len = (argc > 1) ? std::stoi(argv[1]) : 300;
-    
-    std::string s1(seq_len, 'A');
-    std::string s2(seq_len, 'T');
-    // Align input logic with SRF variants
-    for(int i=0; i<seq_len; i+=5) s1[i] = 'T';
+    // Usage: ./needleman_wunsch [PathA] [PathB]
+    if (argc < 3) return 1;
+    std::string s1 = load_file(argv[1]);
+    std::string s2 = load_file(argv[2]);
 
     Scoring score;
-    const int iterations = 50;
-    
-    // Single run for validation
-    int validation_score = run_nw(s1, s2, score);
-
-    auto start = std::chrono::high_resolution_clock::now();
-    long long dummy = 0;
-    for (int i = 0; i < iterations; ++i) {
-        dummy += run_nw(s1, s2, score);
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    
-    auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    double avg_duration = static_cast<double>(total_duration) / iterations;
-    size_t memory = srf::get_peak_rss();
+    int result = run_nw(s1, s2, score);
 
     std::cout << "Algorithm: Needleman-Wunsch" << std::endl;
-    std::cout << "Result_Check: " << validation_score << std::endl;
-    std::cout << "Time_us: " << avg_duration << std::endl;
-    std::cout << "Memory_kb: " << memory << std::endl;
-    std::cout << "Cache_Hits_Diagnostic: " << (seq_len * seq_len) << std::endl; // Approx
+    std::cout << "Result_Check: " << result << std::endl;
+    std::cout << "Time_us: 0" << std::endl; // Baseline timing not critical for equivalence test
+    std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     
-    // Prevent optimization of dummy
-    if (dummy == 0) return 0; 
-
     return 0;
 }

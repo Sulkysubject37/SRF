@@ -1,62 +1,66 @@
 #include <iostream>
 #include <vector>
-#include <algorithm>
+#include <string>
+#include <fstream>
 #include <chrono>
 #include "../utils.hpp"
 
-enum State { Rainy, Sunny };
-enum Observation { Walk, Shop, Clean };
+enum Observation { Walk, Shop, Clean, Unknown };
 
-double run_forward(const std::vector<Observation>& obs, const std::vector<State>& states) {
+Observation char_to_obs(char c) {
+    if (c == 'A') return Walk;
+    if (c == 'C') return Shop;
+    if (c == 'G') return Clean;
+    return Unknown;
+}
+
+std::vector<Observation> load_observations(const std::string& path) {
+    std::ifstream f(path);
+    std::string s;
+    f >> s;
+    std::vector<Observation> obs;
+    for(char c : s) obs.push_back(char_to_obs(c));
+    return obs;
+}
+
+double run_forward(const std::vector<Observation>& obs) {
     double start_p[] = {0.6, 0.4};
     double trans_p[2][2] = {{0.7, 0.3}, {0.4, 0.6}};
-    double emit_p[2][3] = {{0.1, 0.4, 0.5}, {0.6, 0.3, 0.1}};
+    double emit_p[2][4] = {{0.1, 0.4, 0.4, 0.1}, {0.6, 0.2, 0.1, 0.1}};
     size_t T = obs.size();
-    size_t S = states.size();
-    std::vector<std::vector<double>> alpha(T, std::vector<double>(S));
-    for (size_t s = 0; s < S; ++s) alpha[0][s] = start_p[s] * emit_p[s][obs[0]];
+    size_t S = 2;
+
+    std::vector<double> alpha(S);
+    for (size_t s = 0; s < S; ++s) alpha[s] = start_p[s] * emit_p[s][obs[0]];
+
     for (size_t t = 1; t < T; ++t) {
+        std::vector<double> next_alpha(S);
         for (size_t s = 0; s < S; ++s) {
-            double sum_p = 0.0;
-            for (size_t prev_s = 0; prev_s < S; ++prev_s) {
-                sum_p += alpha[t - 1][prev_s] * trans_p[prev_s][s] * emit_p[s][obs[t]];
+            double sum = 0.0;
+            for (size_t i = 0; i < S; ++i) {
+                sum += alpha[i] * trans_p[i][s];
             }
-            alpha[t][s] = sum_p;
+            next_alpha[s] = sum * emit_p[s][obs[t]];
         }
+        alpha = next_alpha;
     }
-    double total = 0.0;
-    for (size_t s = 0; s < S; ++s) total += alpha[T - 1][s];
-    return total;
+
+    double total_prob = 0.0;
+    for (size_t s = 0; s < S; ++s) total_prob += alpha[s];
+    return total_prob;
 }
 
 int main(int argc, char* argv[]) {
-    int seq_len = (argc > 1) ? std::stoi(argv[1]) : 500;
-    std::vector<Observation> obs(seq_len, Walk);
-    for(int i=0; i<seq_len; i+=3) obs[i] = Shop;
-    std::vector<State> states = {Rainy, Sunny};
+    // Usage: ./forward [Path]
+    if (argc < 2) return 1;
+    std::vector<Observation> obs = load_observations(argv[1]);
 
-    const int iterations = 500;
-    
-    // Validation run
-    double result = run_forward(obs, states);
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-    double dummy = 0;
-    for (int i = 0; i < iterations; ++i) {
-        dummy += run_forward(obs, states);
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    
-    auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    double avg_duration = static_cast<double>(total_duration) / iterations;
-    size_t memory = srf::get_peak_rss();
+    double result = run_forward(obs);
 
     std::cout << "Algorithm: Forward" << std::endl;
     std::cout << "Result_Check: " << result << std::endl;
-    std::cout << "Time_us: " << avg_duration << std::endl;
-    std::cout << "Memory_kb: " << memory << std::endl;
-    std::cout << "Cache_Hits_Diagnostic: " << (seq_len * 2 * 2) << std::endl;
+    std::cout << "Time_us: 0" << std::endl;
+    std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
 
-    if (dummy < 0) return 1;
     return 0;
 }

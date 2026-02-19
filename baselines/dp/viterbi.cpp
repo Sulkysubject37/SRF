@@ -1,67 +1,70 @@
 #include <iostream>
 #include <vector>
-#include <algorithm>
+#include <string>
+#include <fstream>
 #include <chrono>
+#include <algorithm>
 #include "../utils.hpp"
 
-enum State { Rainy, Sunny };
-enum Observation { Walk, Shop, Clean };
+enum Observation { Walk, Shop, Clean, Unknown };
 
-double run_viterbi(const std::vector<Observation>& obs, const std::vector<State>& states) {
+Observation char_to_obs(char c) {
+    if (c == 'A') return Walk;
+    if (c == 'C') return Shop;
+    if (c == 'G') return Clean;
+    return Unknown;
+}
+
+std::vector<Observation> load_observations(const std::string& path) {
+    std::ifstream f(path);
+    std::string s;
+    f >> s;
+    std::vector<Observation> obs;
+    for(char c : s) obs.push_back(char_to_obs(c));
+    return obs;
+}
+
+double run_viterbi(const std::vector<Observation>& obs) {
     double start_p[] = {0.6, 0.4};
     double trans_p[2][2] = {{0.7, 0.3}, {0.4, 0.6}};
-    double emit_p[2][3] = {{0.1, 0.4, 0.5}, {0.6, 0.3, 0.1}};
+    double emit_p[2][4] = {{0.1, 0.4, 0.4, 0.1}, {0.6, 0.2, 0.1, 0.1}};
     size_t T = obs.size();
-    size_t S = states.size();
-    std::vector<std::vector<double>> V(T, std::vector<double>(S));
-    for (size_t s = 0; s < S; ++s) V[0][s] = start_p[s] * emit_p[s][obs[0]];
+    size_t S = 2;
+
+    std::vector<double> V(S);
+    for (size_t s = 0; s < S; ++s) V[s] = start_p[s] * emit_p[s][obs[0]];
+
     for (size_t t = 1; t < T; ++t) {
+        std::vector<double> next_V(S);
         for (size_t s = 0; s < S; ++s) {
             double max_p = -1.0;
-            for (size_t prev_s = 0; prev_s < S; ++prev_s) {
-                double p = V[t - 1][prev_s] * trans_p[prev_s][s] * emit_p[s][obs[t]];
+            for (size_t i = 0; i < S; ++i) {
+                double p = V[i] * trans_p[i][s];
                 if (p > max_p) max_p = p;
             }
-            V[t][s] = max_p;
+            next_V[s] = max_p * emit_p[s][obs[t]];
         }
+        V = next_V;
     }
-    double final_max = -1.0;
+
+    double final_max_p = -1.0;
     for (size_t s = 0; s < S; ++s) {
-        if (V[T - 1][s] > final_max) final_max = V[T - 1][s];
+        if (V[s] > final_max_p) final_max_p = V[s];
     }
-    return final_max;
+    return final_max_p;
 }
 
 int main(int argc, char* argv[]) {
-    int seq_len = (argc > 1) ? std::stoi(argv[1]) : 500;
-    std::vector<Observation> obs(seq_len, Walk);
-    for(int i=0; i<seq_len; i+=3) obs[i] = Shop;
-    std::vector<State> states = {Rainy, Sunny};
+    // Usage: ./viterbi [Path]
+    if (argc < 2) return 1;
+    std::vector<Observation> obs = load_observations(argv[1]);
 
-    const int iterations = 500;
-    
-    // Validation run
-    double result = run_viterbi(obs, states);
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-    double dummy = 0;
-    for (int i = 0; i < iterations; ++i) {
-        dummy += run_viterbi(obs, states);
-    }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    
-    auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    double avg_duration = static_cast<double>(total_duration) / iterations;
-    size_t memory = srf::get_peak_rss();
+    double result = run_viterbi(obs);
 
     std::cout << "Algorithm: Viterbi" << std::endl;
     std::cout << "Result_Check: " << result << std::endl;
-    std::cout << "Time_us: " << avg_duration << std::endl;
-    std::cout << "Memory_kb: " << memory << std::endl;
-    std::cout << "Cache_Hits_Diagnostic: " << (seq_len * 2 * 2) << std::endl;
-    
-    // Prevent optimization
-    if (dummy < 0) return 1;
+    std::cout << "Time_us: 0" << std::endl;
+    std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
 
     return 0;
 }
