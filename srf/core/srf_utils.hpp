@@ -26,6 +26,11 @@ struct Metrics {
     std::atomic<long long> last_unit_id{-1};
     std::atomic<long long> unit_reuse_proxy{0};
 
+    // Phase 5-B: Analytical Modeling
+    std::atomic<long long> compute_events{0};
+    std::atomic<long long> memory_access_proxy{0};
+    std::atomic<long long> dispatch_overhead_proxy{0};
+
     void reset() {
         recompute_events = 0;
         working_set_bytes = 0;
@@ -34,19 +39,26 @@ struct Metrics {
         unit_recompute_events = 0;
         last_unit_id = -1;
         unit_reuse_proxy = 0;
+        compute_events = 0;
+        memory_access_proxy = 0;
+        dispatch_overhead_proxy = 0;
     }
-    void record_recompute(int count = 1) { recompute_events += count; }
+    void record_recompute(int count = 1) { recompute_events += count; compute_events += count; }
+    void record_compute(int count = 1) { compute_events += count; }
+    void record_mem_access() { memory_access_proxy++; }
+    
     void update_working_set(size_t bytes) {
         long long current = working_set_bytes;
         while (bytes > (size_t)current && !working_set_bytes.compare_exchange_weak(current, (long long)bytes));
     }
-    void record_reuse() { tile_reuse_count++; }
+    void record_reuse() { tile_reuse_count++; memory_access_proxy++; }
     void record_dist(long long d) { total_dist_metric += d; }
 
     void record_unit_recompute(long long unit_id) {
         long long prev = last_unit_id.exchange(unit_id);
         if (unit_id != prev) {
             unit_recompute_events++;
+            dispatch_overhead_proxy++; // Treat unit-switch as a logical dispatch event
         } else {
             unit_reuse_proxy++;
         }

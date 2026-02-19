@@ -20,7 +20,11 @@ double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int
     std::vector<double> V(S);
     srf::global_metrics.update_working_set((checkpoints.size() * S + S) * sizeof(double));
 
-    for (size_t s = 0; s < S; ++s) V[s] = start_p[s] * emit_p[s][obs[0]];
+    for (size_t s = 0; s < S; ++s) {
+        V[s] = start_p[s] * emit_p[s][obs[0]];
+        srf::global_metrics.record_compute(1);
+        srf::global_metrics.record_mem_access();
+    }
     checkpoints[0] = V;
 
     for (size_t t = 1; t < T; ++t) {
@@ -34,6 +38,8 @@ double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int
         for (size_t s = 0; s < S; ++s) {
             std::vector<double> trans_row = {trans_p[0][s], trans_p[1][s]};
             next_V[s] = backend->viterbi_step_compute(V, trans_row, emit_p[s][obs[t]]);
+            srf::global_metrics.record_compute(1);
+            srf::global_metrics.record_mem_access();
         }
         V = next_V;
         if (is_checkpoint) checkpoints[t / K] = V;
@@ -73,9 +79,16 @@ int main(int argc, char* argv[]) {
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
+    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
+    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
+    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
     std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
     std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
     std::cout << "Granularity_Unit_Size: " << G << std::endl;
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat"
+    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
+    #pragma GCC diagnostic pop
     std::cout << "Transfer_Overhead_us: " << b_metrics.transfer_overhead_us << std::endl;
     std::cout << "Kernel_Launch_Count: " << b_metrics.kernel_launch_count << std::endl;
     std::cout << "Param_1: " << K << std::endl;

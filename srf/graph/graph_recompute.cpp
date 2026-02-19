@@ -14,12 +14,14 @@ struct Edge {
 int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>& adj, int recompute_depth, int G, srf::IBackend* backend) {
     std::vector<int> dist(num_nodes, 1e9);
     dist[0] = 0;
+    srf::global_metrics.record_mem_access();
     srf::global_metrics.update_working_set(dist.size() * sizeof(int));
 
     srf::GranularityPolicy policy(srf::GranularityType::GROUP, G);
 
     for (int u = 0; u < num_nodes; ++u) {
         if (dist[u] == 1e9) continue;
+        srf::global_metrics.record_mem_access();
         for (const auto& edge : adj[u]) {
             srf::global_metrics.record_recompute(recompute_depth);
             srf::global_metrics.record_unit_recompute(policy.get_unit_id(u));
@@ -28,9 +30,13 @@ int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>&
             std::vector<int> pred_dists = {dist[u]};
             std::vector<int> weights = {edge.weight};
             int new_dist = backend->graph_node_compute(pred_dists, weights);
+            srf::global_metrics.record_compute(1);
+            srf::global_metrics.record_mem_access(); // Read dist[u]
+            srf::global_metrics.record_mem_access(); // Read edge.weight
             
             if (new_dist < dist[edge.to]) {
                 dist[edge.to] = new_dist;
+                srf::global_metrics.record_mem_access(); // Write dist[edge.to]
             }
         }
     }
@@ -66,9 +72,13 @@ int main(int argc, char* argv[]) {
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
+    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
+    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
+    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
     std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
     std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
     std::cout << "Granularity_Unit_Size: " << G << std::endl;
+    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
     std::cout << "Transfer_Overhead_us: " << b_metrics.transfer_overhead_us << std::endl;
     std::cout << "Kernel_Launch_Count: " << b_metrics.kernel_launch_count << std::endl;
     std::cout << "Param_1: " << recompute_depth << std::endl;
