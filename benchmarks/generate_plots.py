@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
-def generate_phase4_plots(csv_path, output_dir):
+def generate_phase5a_plots(csv_path, output_dir):
     if not os.path.exists(csv_path):
         return
 
@@ -18,55 +18,53 @@ def generate_phase4_plots(csv_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     plt.style.use('ggplot')
 
-    # 1. Runtime vs Backend (Per Algorithm)
-    for alg in df['algorithm'].unique():
-        alg_df = df[df['algorithm'] == alg]
-        max_size = alg_df['param_2'].max()
-        scale_df = alg_df[alg_df['param_2'] == max_size]
-        
-        plt.figure(figsize=(10, 6))
-        backends = scale_df['backend_type'].unique()
-        runtimes = [scale_df[scale_df['backend_type'] == b]['runtime_us'].iloc[0] for b in backends]
-        
-        plt.bar(backends, runtimes, color=['steelblue', 'indianred'])
-        plt.ylabel('Runtime (µs)')
-        plt.title(f'{alg} Runtime: CPU vs GPU (Size={max_size})')
-        plt.savefig(os.path.join(output_dir, f"{alg.lower().replace(' ', '_')}_backend_comp.png"), dpi=300)
-        plt.close()
-
-    # 2. Runtime vs Input Size (Backend-aware)
+    # 1. Runtime vs Granularity Unit Size
     for alg in df['algorithm'].unique():
         alg_df = df[df['algorithm'] == alg]
         plt.figure(figsize=(10, 6))
         for b in alg_df['backend_type'].unique():
-            b_df = alg_df[alg_df['backend_type'] == b].sort_values('param_2')
-            plt.plot(b_df['param_2'], b_df['runtime_us'], marker='o', label=f'Backend: {b}')
+            b_df = alg_df[alg_df['backend_type'] == b].sort_values('granularity_unit_size')
+            if not b_df.empty:
+                plt.plot(b_df['granularity_unit_size'], b_df['runtime_us'], marker='o', label=f'Backend: {b}')
         
-        plt.xlabel('Input Size (SeqLen / Nodes)')
+        plt.xlabel('Granularity Unit Size (Tile/Segment/Group)')
         plt.ylabel('Runtime (µs)')
-        plt.title(f'{alg} Scalability: Runtime vs Input Size')
+        plt.title(f'{alg}: Runtime vs Granularity Unit Size')
         plt.legend()
-        plt.savefig(os.path.join(output_dir, f"{alg.lower().replace(' ', '_')}_scalability.png"), dpi=300)
+        plt.savefig(os.path.join(output_dir, f"{alg.lower().replace(' ', '_')}_runtime_vs_granularity.png"), dpi=300)
         plt.close()
 
-    # 3. Transfer Overhead vs Input Size (GPU only)
-    gpu_df = df[df['backend_type'] == 'gpu']
-    if not gpu_df.empty:
+    # 2. Unit Recompute Events vs Granularity
+    for alg in df['algorithm'].unique():
+        alg_df = df[df['algorithm'] == alg]
         plt.figure(figsize=(10, 6))
-        for alg in gpu_df['algorithm'].unique():
-            alg_gpu = gpu_df[gpu_df['algorithm'] == alg].sort_values('param_2')
-            # Handle NA or missing transfer overhead
-            if 'transfer_overhead_us' in alg_gpu.columns:
-                valid_transfer = alg_gpu[alg_gpu['transfer_overhead_us'] != 'NA']
-                if not valid_transfer.empty:
-                    plt.plot(valid_transfer['param_2'], valid_transfer['transfer_overhead_us'].astype(float), marker='s', label=alg)
+        # Backend doesn't affect deterministic event counts, so we just take CPU for simplicity
+        b_df = alg_df[alg_df['backend_type'] == 'cpu'].sort_values('granularity_unit_size')
+        if not b_df.empty:
+            plt.plot(b_df['granularity_unit_size'], b_df['unit_recompute_events'], marker='s', color='orange', label='Unit Recompute Events')
+            plt.plot(b_df['granularity_unit_size'], b_df['recompute_events'], marker='x', linestyle='--', color='gray', label='Cell/Step Recompute Events (Base)')
         
-        plt.xlabel('Input Size')
-        plt.ylabel('Simulated Transfer Overhead (µs)')
-        plt.title('Phase 4: GPU Data Transfer Scalability')
+        plt.xlabel('Granularity Unit Size')
+        plt.ylabel('Event Count')
+        plt.title(f'{alg}: Recomputation Events vs Granularity')
         plt.legend()
-        plt.savefig(os.path.join(output_dir, "gpu_transfer_overhead.png"), dpi=300)
+        plt.savefig(os.path.join(output_dir, f"{alg.lower().replace(' ', '_')}_events_vs_granularity.png"), dpi=300)
+        plt.close()
+
+    # 3. Unit Reuse Proxy vs Granularity
+    for alg in df['algorithm'].unique():
+        alg_df = df[df['algorithm'] == alg]
+        plt.figure(figsize=(10, 6))
+        b_df = alg_df[alg_df['backend_type'] == 'cpu'].sort_values('granularity_unit_size')
+        if not b_df.empty:
+            plt.plot(b_df['granularity_unit_size'], b_df['unit_reuse_proxy'], marker='^', color='green', label='Unit Reuse Proxy')
+        
+        plt.xlabel('Granularity Unit Size')
+        plt.ylabel('Reuse Count')
+        plt.title(f'{alg}: Unit Reuse Proxy vs Granularity')
+        plt.legend()
+        plt.savefig(os.path.join(output_dir, f"{alg.lower().replace(' ', '_')}_reuse_vs_granularity.png"), dpi=300)
         plt.close()
 
 if __name__ == "__main__":
-    generate_phase4_plots("results/csv/benchmark_log.csv", "results/plots")
+    generate_phase5a_plots("results/csv/benchmark_log.csv", "results/plots")

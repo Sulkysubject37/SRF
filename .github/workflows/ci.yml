@@ -41,7 +41,9 @@ jobs:
         shell: bash
         run: |
           chmod +x ci/ci_entrypoint.sh
+          # Phase 5-A: Explicitly run granularity benchmarks
           bash ci/ci_entrypoint.sh
+          bash benchmarks/run_benchmarks.sh
 
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@v4
