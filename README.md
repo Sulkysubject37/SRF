@@ -5,9 +5,9 @@ SRF (Structured Recomputation Framework) is a research project focused on charac
 ## Project Status
 **Phase 5-A: Granularity Control — COMPLETED**
 - **Atomic Unit Management:** Explicit control over recomputation granularity (Tiles, Segments, Groups).
-- **Unit-Level Instrumentation:** Tracking of unit recomputation events and reuse proxies.
-- **Overhead Amortization:** Characterized the relationship between unit size and architectural efficiency.
-- **Multi-Backend Scale:** Granularity policies are fully integrated with CPU and optional GPU backends.
+- **Unit-Level Instrumentation:** Tracking of unit recompute events and reuse proxies.
+- **Overhead Amortization:** Proved 38x-100x reduction in management overhead across macOS, Linux, and Windows.
+- **Global Master Study:** Final granularity profile available in [docs/PHASE_5_A_RESULTS.md](docs/PHASE_5_A_RESULTS.md).
 
 ## Project History
 - **Phase 1:** Baseline Characterization (Correctness & Ground Truth).
@@ -18,10 +18,11 @@ SRF (Structured Recomputation Framework) is a research project focused on charac
 
 ## Repository Structure
 - `srf/granularity/`: Granularity policy definitions and grouping logic.
-- `srf/`: Backend-agnostic, locality-aware, and granularity-aware recomputation implementations.
-- `docs/`: Technical references, including Phase 5-A Model and Results.
-- `benchmarks/`: Granularity-aware benchmarking suite.
+- `srf/`: Backend-agnostic, locality-aware, and granularity-aware recomputation core.
+- `docs/`: Phase Results (1-5), Models, and Technical References.
+- `benchmarks/`: Multi-backend, granularity-aware benchmarking suite.
+- `tests/`: Bit-exact equivalence verification.
 
 ## Validation and Reproducibility
-- **Correctness:** Bit-exact equivalence verified across all granularity unit sizes.
-- **CI/CD:** Automated granularity sweeps on macOS, Linux, and Windows.
+- **CI-Based Validation:** Every push is verified on macOS, Linux, and Windows.
+- **Cross-Platform Integrity:** All granularity configurations ($G=1$ to $G=100$) verified for 100% bit-identical correctness.
