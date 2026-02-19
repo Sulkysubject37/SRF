@@ -1,0 +1,15 @@
+algorithm,variant,platform,dataset_scale,input_size,runtime_us,recompute_events,compute_events,relative_cost_ratio,locality_index
+Needleman-Wunsch,SRF-GranularityAware,Darwin,XS,200,854,36100,76100,0.9025,1710.0
+Needleman-Wunsch,SRF-GranularityAware,Darwin,S,500,5283,225625,475625,0.9025,10687.5
+Needleman-Wunsch,SRF-GranularityAware,Darwin,M,1000,21195,902500,1902500,0.9025,42750.0
+Needleman-Wunsch,SRF-GranularityAware,Darwin,L,2000,84021,3610000,7610000,0.9025,171000.0
+Needleman-Wunsch,SRF-GranularityAware,Darwin,XL,4000,583514,14440000,30440000,0.9025,684000.0
+Needleman-Wunsch,SRF-GranularityAware,Linux,XS,200,702,36100,76100,0.9025,1710.0
+Needleman-Wunsch,SRF-GranularityAware,Linux,S,500,4411,225625,475625,0.9025,10687.5
+Forward,SRF-GranularityAware,Darwin,XS,200,10,190,590,0.475,17.0
+Forward,SRF-GranularityAware,Darwin,S,500,26,475,1475,0.475,42.5
+Forward,SRF-GranularityAware,Darwin,M,1000,101,950,2950,0.475,85.0
+Forward,SRF-GranularityAware,Darwin,L,2000,196,1900,5900,0.475,170.0
+Forward,SRF-GranularityAware,Darwin,XL,4000,359,3800,11800,0.475,340.0
+Forward,SRF-GranularityAware,Linux,XS,200,12,190,590,0.475,17.0
+Forward,SRF-GranularityAware,Linux,S,500,30,475,1475,0.475,42.5
