@@ -1,6 +1,6 @@
 # SRF Technical Reference: Implementation and Architectural Evolution
 
-This document provides a comprehensive technical reference for the Structured Recomputation Framework (SRF), detailing the algorithmic transformations from storage-dominated dynamic programming to locality-aware, granularity-controlled, and real-world biologically stress-tested deterministic recomputation.
+This document provides a comprehensive technical reference for the Structured Recomputation Framework (SRF), detailing the algorithmic transformations from storage-dominated dynamic programming to locality-aware, algebraically modeled, and extreme-scale characterized deterministic recomputation.
 
 SRF is an algorithmic memory restructuring framework, not a new algorithmic family. All transformations preserve mathematical correctness and biological validity.
 
@@ -60,22 +60,15 @@ Phase 1 metrics represent the performance floor, not optimized performance.
 Phase 2 introduced SRF’s core transformation: **Replace stored intermediate state with deterministic recomputation.**
 
 ### 2.1 Needleman–Wunsch (Space-Reduced / Blocked)
-The Phase 2 transition for Needleman-Wunsch focused on the elimination of the quadratic space complexity $O(N \cdot M)$. 
+The Phase 2 transition focused on the elimination of the quadratic space complexity $O(N \cdot M)$. 
 
 * **The Alternating Buffer Strategy:** Instead of allocating a full 2D matrix, we implement two linear buffers: `std::vector<int> prev(m + 1)` and `std::vector<int> curr(m + 1)`. 
 * **Eviction Protocol:** Once `curr[m]` is calculated, the `prev` buffer is overwritten with the values of `curr`. This effectively evicts the data for row $i-1$, ensuring the memory footprint remains constant at $2 \times M$ integers regardless of the sequence length $N$.
-* **Recomputation Mechanics:** For any cell $(i, j)$ where $i \pmod B \neq 0$ and $j \pmod B \neq 0$, the cell is considered "transient". The logic increments the `recompute_events` counter, representing the arithmetic work required to regenerate this cell.
+* **Recomputation Mechanics:** For any cell $(i, j)$ where $i \pmod B \neq 0$ and $j \pmod B \neq 0$, the cell is considered "transient". The logic increments the `recompute_events` counter, representing the work required to regenerate this cell.
 
 ### 2.2 HMM Checkpointed Inference
 * **State Retention Policy:** Phase 2 introduces a checkpointing interval $K$. We allocate a 2D vector `checkpoints[(T/K) + 1][S]` to store the probability vectors only at discrete intervals.
 * **Recompute Mechanics:** When the algorithm requires a state value at time $t$, it identifies the nearest preceding checkpoint and re-runs the Forward/Viterbi transitions.
-
-**Needleman-Wunsch Phase 2 Metrics**
-| Platform | Variant | Runtime (µs) | Memory (KB) | Recomputes |
-| :--- | :--- | :---: | :---: | :---: |
-| Darwin | SRF-Blocked | 2451.3 | 1168 | 319,575 |
-| Linux | SRF-Blocked | 886.3 | 3465 | 319,575 |
-| Windows | SRF-Blocked | 854.0 | 4407 | 319,575 |
 
 ![Phase 2 Global Master Profile](/Users/sulky/Documents/SRF/docs/phase_2_global_master.png)
 
@@ -83,10 +76,10 @@ The Phase 2 transition for Needleman-Wunsch focused on the elimination of the qu
 
 ## Phase 3: Performance SRF (Locality Optimization)
 
-Phase 3 focused on improving speed without increasing the $O(N)$ footprint by aligning recomputation with the CPU cache hierarchy.
+Phase 3 improved speed without increasing the $O(N)$ footprint by aligning recomputation with the CPU cache hierarchy.
 
 ### 3.1 Needleman–Wunsch: Cache-Aware Tiling
-* **The Strategy:** Align recomputation blocks with the CPU's physical cache hierarchy. If a recomputation tile is small enough to fit in the L1 cache, the CPU can recalculate values extremely fast.
+* **The Strategy:** Align recomputation blocks with the CPU's physical cache hierarchy.
 * **Cache Budget Model:** $$\text{TileSize}^2 \times 4 \text{ bytes} \le \text{CacheBudget}$$
 * **Performance Inversion:** On Linux, the SRF-Optimized runtime was **393 µs**, compared to the Baseline's **496 µs**. This **20% speedup** confirms that recomputation wins if it reduces DRAM traffic.
 
@@ -104,8 +97,8 @@ Phase 3 focused on improving speed without increasing the $O(N)$ footprint by al
 
 Phase 4 introduced a formal separation between algorithmic logic and primitive computational execution.
 
-### 4.1 Backend Interface Layer (`IBackend`)
-SRF remains "backend-agnostic" via a common execution primitive API (`nw_cell_compute`, `forward_step_compute`, etc.), allowing hardware portability without semantic divergence.
+### 4.1 Backend Abstraction Layer (`IBackend`)
+SRF remains "backend-agnostic" via a common execution primitive API, allowing hardware portability (CPU, GPU, FPGA) without semantic divergence.
 
 ### 4.2 Multi-Backend Scalability
 The framework was stressed at bioinformatics scales ($N=1000$ for NW, $N=10000$ for Graph-DP).
@@ -113,8 +106,8 @@ The framework was stressed at bioinformatics scales ($N=1000$ for NW, $N=10000$ 
 **Global Scalability Delta (Darwin)**
 | Algorithm (Size) | Phase 1 (Baseline) | Phase 4 (SRF-Optimized) | Delta |
 | :--- | :---: | :---: | :---: |
-| **Forward (5000)** | ~300 µs | **269 µs** | **-10% (Faster)** |
-| **Graph-DP (10000)** | ~500 µs | **29 µs** | **-94% (Faster)** |
+| **Forward (5000)** | ~300 µs | **269 µs** | **-10%** |
+| **Graph-DP (10000)** | ~500 µs | **29 µs** | **-94%** |
 
 ![Phase 4 Global Master Profile](/Users/sulky/Documents/SRF/docs/phase_4_global_master.png)
 
@@ -132,7 +125,7 @@ Coarsening the granularity ($G > 1$) reduced recompute management events by up t
 ### 5.2 Deterministic Explanatory Models
 SRF implements a platform-agnostic cost scorecard:
 $$\text{Cost Ratio} = \frac{\text{Recompute Events}}{\text{Total Compute} - \text{Recompute Events}}$$
-The invariance of these ratios across OS platforms (0.90 for NW, 4.00 for Graph-DP) confirms they capture fundamental algorithmic properties.
+The invariance of these ratios across OS platforms confirms they capture fundamental algorithmic properties.
 
 ![Phase 5 Global Master Profile](/Users/sulky/Documents/SRF/docs/phase_5_global_master.png)
 
@@ -140,32 +133,44 @@ The invariance of these ratios across OS platforms (0.90 for NW, 4.00 for Graph-
 
 ## Phase 6: Biological Workload Scaling
 
-Phase 6 characterized SRF against authentic biological datasets, transitioning from synthetic tests to real evolutionary workloads.
+Phase 6 characterized SRF against authentic biological datasets (Mitochondrial genomes and GO Hierarchy).
 
-### 6.1 Dataset Integration
-The framework was evaluated using:
-*   **Sequences:** Head-to-head comparison of Human vs. Neanderthal Mitochondrial genomes (NCBI RefSeq).
-*   **Graphs:** Hierarchical dependency subsets of the Gene Ontology (GO) hierarchy.
+### 6.1 Scaling Complexity
+Validation against the XS-XL ladder (200bp to 4000bp) confirmed:
+*   **Needleman-Wunsch:** Strict **Quadratic Scaling** ($O(N^2)$).
+*   **Forward:** Strict **Linear Scaling** ($O(N)$).
 
-### 6.2 Complexity Scaling Regimes
-Validation against the XS-XL scaling ladder (200bp to 4000bp) confirmed the preservation of algorithmic complexity:
-*   **Needleman-Wunsch:** Strict **Quadratic Scaling** ($O(N^2)$). Transitioning from XS to XL resulted in a ~680x increase in execution time, perfectly aligned with theoretical expectations.
-*   **Forward:** Strict **Linear Scaling** ($O(N)$). The framework maintained high efficiency at scale, with linear growth in both runtime and recompute events.
-
-### 6.3 Real-world Model Validation
-Algebraic cost models derived in Phase 5 remained **100% stable** when applied to real biological data, proving that SRF's predictive indicators are robust to sequence composition and topological complexity.
+### 6.2 Real-world Validation
+Algebraic cost models derived in Phase 5 remained **100% stable** when applied to real biological data, proving that SRF's predictive indicators are robust.
 
 ![Phase 6 Global Master Profile](/Users/sulky/Documents/SRF/docs/phase_6_global_master.png)
 
 \newpage
 
+## Phase 7: Extreme-Scale Behaviour & Regime Mapping
+
+Phase 7 pushed the framework to its absolute hardware limits, mapping failure regimes and scaling transitions.
+
+### 7.1 Extreme Scaling Limits (N=1,000,000)
+The framework successfully processed 1M steps for HMMs and 250k nodes for Graph-DP, achieving a **99.999% reduction** in algorithmic memory footprint compared to regular implementations.
+
+### 7.2 Execution Regime Transitions
+Observational stress testing identified three distinct architectural regimes:
+1.  **Memory-Bound:** Needleman-Wunsch (Extreme) transitions to this state due to the high volume of linear-to-quadratic buffer reconstructions.
+2.  **Balanced:** Linear HMM structures remain efficient even at 1M step scales.
+3.  **Recomputation-Dominated:** Graph structures with deep dependencies are limited by predecessor re-traversal latency.
+
+![Phase 7 Global Master Profile](/Users/sulky/Documents/SRF/docs/phase_7_global_master.png)
+
+\newpage
+
 ## Instrumentation & Metrics Model
 
-* **Runtime:** wall-clock execution time (µs).
-* **Relative Cost Ratio:** Algebraic overhead indicator ($Events/Base$).
-* **Working Set Proxy:** Active buffer footprint (Bytes).
-* **Deterministic Events:** Bit-exact counts of arithmetic operations.
+* **Runtime:** Average wall-clock time (µs).
+* **Working Set Proxy:** The calculated size of active buffers (Bytes).
+* **Cost Ratio:** Algebraic overhead indicator ($Events/Base$).
+* **Memory Access Proxy:** Deterministic count of buffer interactions.
 
 ## Conclusion
 
-SRF demonstrates that memory footprint reduction via deterministic recomputation is not only viable but highly efficient. By decoupling **Computation** (Backends), **Locality** (Cache), **Granularity** (Management), and **Analysis** (Models), the framework provides a robust foundation for scaling bioinformatics algorithms on heterogeneous systems.
+SRF demonstrates that memory footprint reduction via deterministic recomputation is not only viable but highly efficient. By decoupling **Backends** (Hardware), **Locality** (Cache), **Granularity** (Management), and **Analysis** (Models), the framework provides a robust foundation for scaling bioinformatics algorithms on memory-constrained heterogeneous systems.
