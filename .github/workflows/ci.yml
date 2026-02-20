@@ -42,15 +42,24 @@ jobs:
         run: |
           chmod +x ci/ci_entrypoint.sh
           bash ci/ci_entrypoint.sh
-          # Phase 6: Prepare real biological datasets
+          # Phase 6 & 7: Prepare datasets
           bash scripts/download_datasets.sh
           python3 scripts/prepare_sequences.py
           python3 scripts/prepare_graphs.py
-          # Run Stress Tests (Filtered by scale in CI)
+          python3 scripts/generate_extreme_datasets.py
+          # Run Standard Benchmarks
           SRF_CI_SCALE_ONLY=1 bash benchmarks/run_benchmarks.sh
-          # Phase 7A: Run moderate scale stress tests
-          bash stress_tests/moderate_scale.sh
+          # Phase 7: Extreme Scale Attempt with Fallback
+          echo "Attempting Extreme-Scale Stress Tests..."
+          if bash stress_tests/extreme_scale.sh; then
+            echo "Extreme-scale tests completed successfully."
+          else
+            echo "Extreme-scale tests failed or timed out. Falling back to Moderate-scale."
+            bash stress_tests/moderate_scale.sh
+          fi
+          # Analytical Modeling and Regime Mapping
           python3 analysis/predictive_analysis.py
+          python3 analysis/regime_mapping.py
 
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@v4
