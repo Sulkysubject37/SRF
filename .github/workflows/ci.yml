@@ -48,6 +48,8 @@ jobs:
           python3 scripts/prepare_graphs.py
           # Run Stress Tests (Filtered by scale in CI)
           SRF_CI_SCALE_ONLY=1 bash benchmarks/run_benchmarks.sh
+          # Phase 7A: Run moderate scale stress tests
+          bash stress_tests/moderate_scale.sh
           python3 analysis/predictive_analysis.py
 
       - name: Upload Benchmark Results
