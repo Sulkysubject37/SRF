@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "[SRF] Starting Phase 8-A Observation Benchmarks..."
+echo "[SRF] Starting Phase 8-B Adaptation Benchmarks..."
 
 # Ensure we are in the root directory
 cd "$(dirname "$0")/.."
@@ -9,13 +9,13 @@ cd "$(dirname "$0")/.."
 # Build all binaries
 bash benchmarks/build.sh
 
-# CSV Schema Extension for Phase 8-A
-# algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,compute_events,memory_access_proxy,dispatch_overhead_proxy,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,device_memory_budget,transfer_overhead_us,kernel_launch_count,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,dataset_scale,input_size,regime_state,drift_state,R_mem,R_rec,status
+# CSV Schema Extension for Phase 8-B
+# algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,compute_events,memory_access_proxy,dispatch_overhead_proxy,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,device_memory_budget,transfer_overhead_us,kernel_launch_count,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,dataset_scale,input_size,regime_state,drift_state,R_mem,R_rec,adaptation_event,adaptation_reason,old_param,new_param,status
 CSV_FILE="results/csv/benchmark_log.csv"
 PLATFORM=$(uname)
 
 mkdir -p results/csv
-echo "algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,compute_events,memory_access_proxy,dispatch_overhead_proxy,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,device_memory_budget,transfer_overhead_us,kernel_launch_count,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,dataset_scale,input_size,regime_state,drift_state,R_mem,R_rec,status" > $CSV_FILE
+echo "algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,compute_events,memory_access_proxy,dispatch_overhead_proxy,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,device_memory_budget,transfer_overhead_us,kernel_launch_count,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,dataset_scale,input_size,regime_state,drift_state,R_mem,R_rec,adaptation_event,adaptation_reason,old_param,new_param,status" > $CSV_FILE
 
 # Helper to log a run
 log_run() {
@@ -46,10 +46,16 @@ log_run() {
     local input_size=$(echo "$output" | grep -w "Input_Size:" | cut -d' ' -f2- | tr -d '\r')
     local scale=$(echo "$output" | grep -w "Dataset_Scale:" | cut -d' ' -f2- | tr -d '\r')
     
-    # Phase 8A specific metrics
+    # Phase 8A
     local drift_state=$(echo "$output" | grep -w "Drift_State:" | cut -d' ' -f2- | tr -d '\r')
     local r_mem=$(echo "$output" | grep -w "R_mem:" | cut -d' ' -f2- | tr -d '\r')
     local r_rec=$(echo "$output" | grep -w "R_rec:" | cut -d' ' -f2- | tr -d '\r')
+
+    # Phase 8B
+    local adapt_evt=$(echo "$output" | grep -w "ADAPTATION_EVENT:" | cut -d' ' -f2- | tr -d '\r')
+    local adapt_reason=$(echo "$output" | grep -w "ADAPTATION_REASON:" | cut -d' ' -f2- | tr -d '\r')
+    local old_p=$(echo "$output" | grep -w "OLD_PARAM:" | cut -d' ' -f2- | tr -d '\r')
+    local new_p=$(echo "$output" | grep -w "NEW_PARAM:" | cut -d' ' -f2- | tr -d '\r')
 
     [ -z "$recompute" ] && recompute=0
     [ -z "$compute" ] && compute=0
@@ -65,26 +71,27 @@ log_run() {
     [ -z "$drift_state" ] && drift_state="INSUFFICIENT_DATA"
     [ -z "$r_mem" ] && r_mem=0
     [ -z "$r_rec" ] && r_rec=0
+    [ -z "$adapt_evt" ] && adapt_evt="false"
+    [ -z "$adapt_reason" ] && adapt_reason="NONE"
+    [ -z "$old_p" ] && old_p="NA"
+    [ -z "$new_p" ] && new_p="NA"
     
     local g_type="unknown"
     [[ "$alg" == "Needleman-Wunsch" ]] && g_type="tile"
     [[ "$alg" == "Forward" || "$alg" == "Viterbi" ]] && g_type="segment"
     [[ "$alg" == "Graph-DP" ]] && g_type="group"
 
-    echo "$alg,$var,$PLATFORM,$runtime,$memory,$recompute,$compute,$mem_proxy,$dispatch,0,$working_set,0,0,0,0,$backend_type,NA,NA,NA,$g_type,$unit_size,$unit_recompute,$unit_reuse,$scale,$input_size,UNKNOWN,$drift_state,$r_mem,$r_rec,Success" >> $CSV_FILE
+    echo "$alg,$var,$PLATFORM,$runtime,$memory,$recompute,$compute,$mem_proxy,$dispatch,0,$working_set,0,0,0,0,$backend_type,NA,NA,NA,$g_type,$unit_size,$unit_recompute,$unit_reuse,$scale,$input_size,UNKNOWN,$drift_state,$r_mem,$r_rec,$adapt_evt,$adapt_reason,$old_p,$new_p,Success" >> $CSV_FILE
 }
 
-# Standard Sweeps (using XS/S for rapid 8A verification)
+# Standard Sweeps (using XS/S for rapid verification)
 for backend in "SRF_FORCE_CPU=1"; do
-    # NW XS
     log_run "Needleman-Wunsch" "SRF-GranularityAware" "nw_blocked" "datasets/sequences/processed/human_xs.txt" "datasets/sequences/processed/neand_xs.txt" 20 1 "XS" "$backend"
-    # Forward S
     log_run "Forward" "SRF-GranularityAware" "forward_checkpoint" "datasets/sequences/processed/human_s.txt" 20 1 "S" "" "$backend"
-    # Graph S
     log_run "Graph-DP" "SRF-GranularityAware" "graph_recompute" "datasets/graphs/processed/go_subset_s.txt" 4 1 "S" "" "$backend"
 done
 
-echo "[SRF] Generating Phase 8-A reports..."
+echo "[SRF] Generating Phase 8-B reports..."
 python3 analysis/predictive_analysis.py
 python3 analysis/regime_mapping.py
 

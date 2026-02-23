@@ -8,6 +8,7 @@
 #include "../runtime/backend_selector.h"
 #include "../granularity/granularity_policy.h"
 #include "../control/drift_detector.h"
+#include "../control/adaptation_policy.h"
 
 enum Observation { Walk, Shop, Clean, OBS_UNKNOWN };
 
@@ -27,15 +28,19 @@ std::vector<Observation> load_observations(const std::string& path) {
     return obs;
 }
 
-double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
+double viterbi_granularity_aware(const std::vector<Observation>& obs, int K_init, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
     double start_p[] = {0.6, 0.4};
     double trans_p[2][2] = {{0.7, 0.3}, {0.4, 0.6}};
     double emit_p[2][4] = {{0.1, 0.4, 0.4, 0.1}, {0.6, 0.2, 0.1, 0.1}};
     size_t T = obs.size();
     size_t S = 2;
 
+    int current_K = K_init;
     srf::GranularityPolicy policy(srf::GranularityType::SEGMENT, G);
-    std::vector<std::vector<double>> checkpoints((T / K) + 1, std::vector<double>(S));
+    srf::DriftDetector detector;
+    srf::AdaptationPolicy adapter(100);
+
+    std::vector<std::vector<double>> checkpoints((T / 2) + 1, std::vector<double>(S));
     std::vector<double> V(S);
     srf::global_metrics.update_working_set((checkpoints.size() * S + S) * sizeof(double));
 
@@ -47,7 +52,7 @@ double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int
     checkpoints[0] = V;
 
     for (size_t t = 1; t < T; ++t) {
-        bool is_checkpoint = (t % K == 0);
+        bool is_checkpoint = (t % current_K == 0);
         if (!is_checkpoint) {
             srf::global_metrics.record_recompute(1);
             srf::global_metrics.record_unit_recompute(policy.get_unit_id(t));
@@ -61,13 +66,25 @@ double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int
             srf::global_metrics.record_mem_access();
         }
         V = next_V;
-        if (is_checkpoint) checkpoints[t / K] = V;
+        if (is_checkpoint) checkpoints[t / current_K] = V;
         
         if (t % 10 == 0) {
             observer.record_snapshot(srf::global_metrics.compute_events, 
                                      srf::global_metrics.recompute_events, 
                                      srf::global_metrics.memory_access_proxy, 
                                      srf::global_metrics.working_set_bytes);
+            
+            srf::DriftState ds = detector.detect(observer);
+            srf::AdaptationSignal signal = adapter.evaluate(ds, observer);
+            if (signal.should_adapt) {
+                int old_K = current_K;
+                current_K += signal.delta;
+                if (current_K < 2) current_K = 2;
+                std::cout << "ADAPTATION_EVENT: true" << std::endl;
+                std::cout << "ADAPTATION_REASON: " << signal.reason << std::endl;
+                std::cout << "OLD_PARAM: " << old_K << std::endl;
+                std::cout << "NEW_PARAM: " << current_K << std::endl;
+            }
         }
     }
 
@@ -90,7 +107,6 @@ int main(int argc, char* argv[]) {
     backend->reset_metrics();
     
     srf::RegimeObserver observer;
-    srf::DriftDetector detector;
 
     auto start_time = std::chrono::high_resolution_clock::now();
     double result = viterbi_granularity_aware(obs, K, G, backend.get(), observer);
@@ -98,30 +114,18 @@ int main(int argc, char* argv[]) {
     
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     
+    srf::DriftDetector detector;
     srf::DriftState d_state = detector.detect(observer);
     srf::RegimeSnapshot latest = observer.get_latest();
 
     std::cout << "Algorithm: Viterbi" << std::endl;
     std::cout << "Dataset_Scale: " << scale << std::endl;
-    std::cout << "Input_Size: " << obs.size() << std::endl;
     std::cout << "Backend: " << (backend->type() == srf::BackendType::GPU ? "gpu" : "cpu") << std::endl;
     std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
-    std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
-    std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
-    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
-    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
-    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
-    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
-    std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
-    std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
-    std::cout << "Granularity_Unit_Size: " << G << std::endl;
-    
-    // Phase 8A Logging
     std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
     std::cout << "R_mem: " << latest.r_mem << std::endl;
     std::cout << "R_rec: " << latest.r_rec << std::endl;
-    
     std::cout << "Param_1: " << K << std::endl;
     std::cout << "Param_3: " << G << std::endl;
 

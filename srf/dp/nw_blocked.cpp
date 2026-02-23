@@ -8,6 +8,7 @@
 #include "../runtime/backend_selector.h"
 #include "../granularity/granularity_policy.h"
 #include "../control/drift_detector.h"
+#include "../control/adaptation_policy.h"
 
 struct Scoring {
     int match = 1;
@@ -23,15 +24,19 @@ std::string load_file(const std::string& path) {
     return s;
 }
 
-int nw_granularity_aware(const std::string& s1, const std::string& s2, int B, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
+int nw_granularity_aware(const std::string& s1, const std::string& s2, int B_init, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
     size_t n = s1.length();
     size_t m = s2.length();
     srf::GranularityPolicy policy(srf::GranularityType::TILE, G);
     std::vector<int> prev(m + 1), curr(m + 1);
     srf::global_metrics.update_working_set((prev.size() + curr.size()) * sizeof(int));
 
+    int current_B = B_init;
+    srf::DriftDetector detector;
+    srf::AdaptationPolicy adapter(50); // Cooldown
+
     for (size_t j = 0; j <= m; ++j) {
-        prev[j] = j * -1; // gap
+        prev[j] = j * -1;
         srf::global_metrics.record_mem_access();
     }
 
@@ -44,7 +49,7 @@ int nw_granularity_aware(const std::string& s1, const std::string& s2, int B, in
             srf::global_metrics.record_compute(1);
             srf::global_metrics.record_mem_access();
             srf::global_metrics.record_mem_access();
-            if (i % B != 0 && j % B != 0) {
+            if (i % current_B != 0 && j % current_B != 0) {
                 srf::global_metrics.record_recompute(1);
                 srf::global_metrics.record_unit_recompute(policy.get_unit_id_2d(i, j));
             } else {
@@ -57,6 +62,19 @@ int nw_granularity_aware(const std::string& s1, const std::string& s2, int B, in
                                  srf::global_metrics.recompute_events, 
                                  srf::global_metrics.memory_access_proxy, 
                                  srf::global_metrics.working_set_bytes);
+                                 
+        // Phase 8B: Evaluate Adaptation
+        srf::DriftState ds = detector.detect(observer);
+        srf::AdaptationSignal signal = adapter.evaluate(ds, observer);
+        if (signal.should_adapt) {
+            int old_B = current_B;
+            current_B += signal.delta;
+            if (current_B < 2) current_B = 2; // Stability floor
+            std::cout << "ADAPTATION_EVENT: true" << std::endl;
+            std::cout << "ADAPTATION_REASON: " << signal.reason << std::endl;
+            std::cout << "OLD_PARAM: " << old_B << std::endl;
+            std::cout << "NEW_PARAM: " << current_B << std::endl;
+        }
     }
     return prev[m];
 }
@@ -74,7 +92,6 @@ int main(int argc, char* argv[]) {
     backend->reset_metrics();
     
     srf::RegimeObserver observer;
-    srf::DriftDetector detector;
 
     auto start = std::chrono::high_resolution_clock::now();
     int result = nw_granularity_aware(s1, s2, B, G, backend.get(), observer);
@@ -82,30 +99,19 @@ int main(int argc, char* argv[]) {
     
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     
+    srf::DriftDetector detector;
     srf::DriftState d_state = detector.detect(observer);
     srf::RegimeSnapshot latest = observer.get_latest();
 
     std::cout << "Algorithm: Needleman-Wunsch" << std::endl;
     std::cout << "Dataset_Scale: " << scale << std::endl;
-    std::cout << "Input_Size: " << s1.length() << std::endl;
     std::cout << "Backend: " << (backend->type() == srf::BackendType::GPU ? "gpu" : "cpu") << std::endl;
     std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
-    std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
-    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
-    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
-    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
-    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
-    std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
-    std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
-    std::cout << "Granularity_Unit_Size: " << G << std::endl;
-    
-    // Phase 8A Logging
     std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
     std::cout << "R_mem: " << latest.r_mem << std::endl;
     std::cout << "R_rec: " << latest.r_rec << std::endl;
-    
     std::cout << "Param_1: " << B << std::endl;
     std::cout << "Param_3: " << G << std::endl;
 
