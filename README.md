@@ -3,11 +3,11 @@
 SRF (Structured Recomputation Framework) is a research project focused on characterizing and implementing structured recomputation strategies for dynamic programming and graph-based algorithms.
 
 ## Project Status
-**Phase 7: Extreme-Scale Behaviour & Regime Mapping — COMPLETED**
-- **Extreme Scaling:** Verified performance for inputs up to 1M sequence length and 250k graph nodes.
-- **Regime Mapping:** Characterized transitions between Memory-Bound, Balanced, and Recomputation-Dominated states.
-- **Massive Space Savings:** Achieved a **99.999% reduction** in algorithmic memory state at the 1M scale.
-- **Global Master Study:** Final scaling profile available in `docs/phase_7_global_master.png`.
+**Phase 8: Regime Stability & Adaptive Policies — COMPLETED**
+- **Self-Stabilizing Core:** Dynamic detection of execution regime drift using deterministic ratios.
+- **Conservative Adaptation:** Bounded, reversible parameter adjustments governed by strict stability guards.
+- **Platform Invariance:** Verified 100% bit-identical $R_{mem}$ and $R_{rec}$ metrics across macOS, Linux, and Windows.
+- **Global Stability Study:** Final cross-platform stability profile in [docs/phase_8_global_master.png](docs/phase_8_global_master.png).
 
 ## Memory Savings Impact (Genomic Scales)
 | Scale | Input Size | Regular Memory | SRF Memory | **Savings** |
@@ -22,13 +22,14 @@ SRF (Structured Recomputation Framework) is a research project focused on charac
 - **Phase 5:** Granularity & Analytical Modeling.
 - **Phase 6:** Biological Workload Characterization.
 - **Phase 7:** Extreme-Scale Stress Testing.
+- **Phase 8:** Self-Stabilizing Regime Control.
 
 ## Repository Structure
-- `srf/`: Recomputation core (Locality & Granularity aware).
+- `srf/`: Recomputation core (Locality, Granularity, and Stability aware).
+- `control/`: Deterministic drift detection and adaptation policy layer.
 - `analysis/`: Algebraic models and regime classification logic.
-- `datasets_extreme/`: Large-scale synthetic datasets for failure-mode analysis.
-- `docs/`: Technical Reference (PDF), Phase Results (1-7), and Master Plots.
+- `docs/`: Technical Reference (PDF), All Phase Results, and Master Plots.
 
 ## Validation and Reproducibility
-- **CI Safety:** Automated moderate-scale stress testing on every push with extreme fallback.
-- **Deterministic:** 100% bit-exact correctness verified across all scales and platforms.
+- **Metric Determinism:** All stability indicators are derived from bit-exact algorithmic counters.
+- **Continuous Verification:** Every push is tested across macOS, Linux, and Windows for correctness and stability.

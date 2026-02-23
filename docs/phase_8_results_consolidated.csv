@@ -1,0 +1,10 @@
+algorithm,platform,R_mem,R_rec,drift_state
+Needleman-Wunsch,Darwin,1.10777,0.474376,STABLE
+Needleman-Wunsch,Linux,1.10777,0.474376,STABLE
+Needleman-Wunsch,Windows,1.10777,0.474376,STABLE
+Forward,Darwin,0.67817,0.32182,STABLE
+Forward,Linux,0.67817,0.32182,STABLE
+Forward,Windows,0.67817,0.32182,STABLE
+Graph-DP,Darwin,0.0,0.0,INSUFFICIENT_DATA
+Graph-DP,Linux,0.0,0.0,INSUFFICIENT_DATA
+Graph-DP,Windows,0.0,0.0,INSUFFICIENT_DATA
