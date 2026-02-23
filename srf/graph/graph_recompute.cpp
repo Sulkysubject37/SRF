@@ -60,7 +60,6 @@ int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>&
             }
         }
         
-        // Phase 8A: Record snapshot periodically
         if (u % 100 == 0) {
             observer.record_snapshot(srf::global_metrics.compute_events, 
                                      srf::global_metrics.recompute_events, 
@@ -102,11 +101,22 @@ int main(int argc, char* argv[]) {
     std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
+    std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
+    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
+    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
+    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
+    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
+    std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
+    std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
+    std::cout << "Granularity_Unit_Size: " << G << std::endl;
     
     // Phase 8A Logging
     std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
     std::cout << "R_mem: " << latest.r_mem << std::endl;
     std::cout << "R_rec: " << latest.r_rec << std::endl;
+    
+    std::cout << "Param_1: " << recompute_depth << std::endl;
+    std::cout << "Param_3: " << G << std::endl;
 
     return 0;
 }
