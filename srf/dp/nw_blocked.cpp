@@ -7,6 +7,7 @@
 #include "../core/srf_utils.hpp"
 #include "../runtime/backend_selector.h"
 #include "../granularity/granularity_policy.h"
+#include "../control/drift_detector.h"
 
 struct Scoring {
     int match = 1;
@@ -22,7 +23,7 @@ std::string load_file(const std::string& path) {
     return s;
 }
 
-int nw_granularity_aware(const std::string& s1, const std::string& s2, int B, int G, srf::IBackend* backend) {
+int nw_granularity_aware(const std::string& s1, const std::string& s2, int B, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
     size_t n = s1.length();
     size_t m = s2.length();
     srf::GranularityPolicy policy(srf::GranularityType::TILE, G);
@@ -51,12 +52,17 @@ int nw_granularity_aware(const std::string& s1, const std::string& s2, int B, in
             }
         }
         prev = curr;
+        
+        // Phase 8A: Record snapshot every row
+        observer.record_snapshot(srf::global_metrics.compute_events, 
+                                 srf::global_metrics.recompute_events, 
+                                 srf::global_metrics.memory_access_proxy, 
+                                 srf::global_metrics.working_set_bytes);
     }
     return prev[m];
 }
 
 int main(int argc, char* argv[]) {
-    // Usage: ./nw_blocked [PathA] [PathB] [B] [G] [ScaleLabel]
     if (argc < 5) return 1;
     std::string s1 = load_file(argv[1]);
     std::string s2 = load_file(argv[2]);
@@ -68,12 +74,17 @@ int main(int argc, char* argv[]) {
     srf::global_metrics.reset();
     backend->reset_metrics();
     
+    srf::RegimeObserver observer;
+    srf::DriftDetector detector;
+
     auto start = std::chrono::high_resolution_clock::now();
-    int result = nw_granularity_aware(s1, s2, B, G, backend.get());
+    int result = nw_granularity_aware(s1, s2, B, G, backend.get(), observer);
     auto end = std::chrono::high_resolution_clock::now();
     
-    auto duration = std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count();
-    auto b_metrics = backend->get_metrics();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    
+    srf::DriftState d_state = detector.detect(observer);
+    srf::RegimeSnapshot latest = observer.get_latest();
 
     std::cout << "Algorithm: Needleman-Wunsch" << std::endl;
     std::cout << "Dataset_Scale: " << scale << std::endl;
@@ -89,9 +100,11 @@ int main(int argc, char* argv[]) {
     std::cout << "Granularity_Unit_Size: " << G << std::endl;
     std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
     std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
-    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
-    std::cout << "Param_1: " << B << std::endl;
-    std::cout << "Param_3: " << G << std::endl;
+    
+    // Phase 8A Logging
+    std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
+    std::cout << "R_mem: " << latest.r_mem << std::endl;
+    std::cout << "R_rec: " << latest.r_rec << std::endl;
 
     return 0;
 }

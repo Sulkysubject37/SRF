@@ -3,9 +3,11 @@
 #include <string>
 #include <fstream>
 #include <chrono>
+#include <algorithm>
 #include "../core/srf_utils.hpp"
 #include "../runtime/backend_selector.h"
 #include "../granularity/granularity_policy.h"
+#include "../control/drift_detector.h"
 
 enum Observation { Walk, Shop, Clean, OBS_UNKNOWN };
 
@@ -25,7 +27,7 @@ std::vector<Observation> load_observations(const std::string& path) {
     return obs;
 }
 
-double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int G, srf::IBackend* backend) {
+double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
     double start_p[] = {0.6, 0.4};
     double trans_p[2][2] = {{0.7, 0.3}, {0.4, 0.6}};
     double emit_p[2][4] = {{0.1, 0.4, 0.4, 0.1}, {0.6, 0.2, 0.1, 0.1}};
@@ -60,6 +62,14 @@ double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int
         }
         V = next_V;
         if (is_checkpoint) checkpoints[t / K] = V;
+        
+        // Phase 8A: Record snapshot periodically
+        if (t % 10 == 0) {
+            observer.record_snapshot(srf::global_metrics.compute_events, 
+                                     srf::global_metrics.recompute_events, 
+                                     srf::global_metrics.memory_access_proxy, 
+                                     srf::global_metrics.working_set_bytes);
+        }
     }
 
     double final_max_p = -1.0;
@@ -70,7 +80,6 @@ double viterbi_granularity_aware(const std::vector<Observation>& obs, int K, int
 }
 
 int main(int argc, char* argv[]) {
-    // Usage: ./viterbi_checkpoint [Path] [K] [G] [ScaleLabel]
     if (argc < 4) return 1;
     std::vector<Observation> obs = load_observations(argv[1]);
     int K = std::stoi(argv[2]);
@@ -81,12 +90,17 @@ int main(int argc, char* argv[]) {
     srf::global_metrics.reset();
     backend->reset_metrics();
     
+    srf::RegimeObserver observer;
+    srf::DriftDetector detector;
+
     auto start_time = std::chrono::high_resolution_clock::now();
-    double result = viterbi_granularity_aware(obs, K, G, backend.get());
+    double result = viterbi_granularity_aware(obs, K, G, backend.get(), observer);
     auto end_time = std::chrono::high_resolution_clock::now();
     
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    auto b_metrics = backend->get_metrics();
+    
+    srf::DriftState d_state = detector.detect(observer);
+    srf::RegimeSnapshot latest = observer.get_latest();
 
     std::cout << "Algorithm: Viterbi" << std::endl;
     std::cout << "Dataset_Scale: " << scale << std::endl;
@@ -95,16 +109,11 @@ int main(int argc, char* argv[]) {
     std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
-    std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
-    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
-    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
-    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
-    std::cout << "Granularity_Unit_Size: " << G << std::endl;
-    std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
-    std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
-    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
-    std::cout << "Param_1: " << K << std::endl;
-    std::cout << "Param_3: " << G << std::endl;
+    
+    // Phase 8A Logging
+    std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
+    std::cout << "R_mem: " << latest.r_mem << std::endl;
+    std::cout << "R_rec: " << latest.r_rec << std::endl;
 
     return 0;
 }

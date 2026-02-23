@@ -6,6 +6,7 @@
 #include "../core/srf_utils.hpp"
 #include "../runtime/backend_selector.h"
 #include "../granularity/granularity_policy.h"
+#include "../control/drift_detector.h"
 
 struct Edge {
     int to;
@@ -30,7 +31,7 @@ std::vector<std::vector<Edge>> load_graph(const std::string& path, int& num_node
     return adj;
 }
 
-int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>& adj, int recompute_depth, int G, srf::IBackend* backend) {
+int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>& adj, int recompute_depth, int G, srf::IBackend* backend, srf::RegimeObserver& observer) {
     if (num_nodes == 0) return 0;
     std::vector<int> dist(num_nodes, 1e9);
     dist[0] = 0;
@@ -58,12 +59,19 @@ int graph_granularity_aware(int num_nodes, const std::vector<std::vector<Edge>>&
                 srf::global_metrics.record_mem_access();
             }
         }
+        
+        // Phase 8A: Record snapshot periodically
+        if (u % 100 == 0) {
+            observer.record_snapshot(srf::global_metrics.compute_events, 
+                                     srf::global_metrics.recompute_events, 
+                                     srf::global_metrics.memory_access_proxy, 
+                                     srf::global_metrics.working_set_bytes);
+        }
     }
     return dist[num_nodes - 1];
 }
 
 int main(int argc, char* argv[]) {
-    // Usage: ./graph_recompute [Path] [Depth] [G] [ScaleLabel]
     if (argc < 4) return 1;
     int num_nodes = 0;
     auto adj = load_graph(argv[1], num_nodes);
@@ -75,12 +83,17 @@ int main(int argc, char* argv[]) {
     srf::global_metrics.reset();
     backend->reset_metrics();
     
+    srf::RegimeObserver observer;
+    srf::DriftDetector detector;
+
     auto start_time = std::chrono::high_resolution_clock::now();
-    int result = graph_granularity_aware(num_nodes, adj, recompute_depth, G, backend.get());
+    int result = graph_granularity_aware(num_nodes, adj, recompute_depth, G, backend.get(), observer);
     auto end_time = std::chrono::high_resolution_clock::now();
     
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    auto b_metrics = backend->get_metrics();
+    
+    srf::DriftState d_state = detector.detect(observer);
+    srf::RegimeSnapshot latest = observer.get_latest();
 
     std::cout << "Algorithm: Graph-DP" << std::endl;
     std::cout << "Dataset_Scale: " << scale << std::endl;
@@ -89,16 +102,11 @@ int main(int argc, char* argv[]) {
     std::cout << "Result_Check: " << result << std::endl;
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
-    std::cout << "Recompute_Events: " << srf::global_metrics.recompute_events << std::endl;
-    std::cout << "Compute_Events: " << srf::global_metrics.compute_events << std::endl;
-    std::cout << "Memory_Access_Proxy: " << srf::global_metrics.memory_access_proxy << std::endl;
-    std::cout << "Working_Set_Proxy: " << srf::global_metrics.working_set_bytes << std::endl;
-    std::cout << "Granularity_Unit_Size: " << G << std::endl;
-    std::cout << "Unit_Recompute_Events: " << srf::global_metrics.unit_recompute_events << std::endl;
-    std::cout << "Unit_Reuse_Proxy: " << srf::global_metrics.unit_reuse_proxy << std::endl;
-    std::cout << "Dispatch_Overhead_Proxy: " << srf::global_metrics.dispatch_overhead_proxy << std::endl;
-    std::cout << "Param_1: " << recompute_depth << std::endl;
-    std::cout << "Param_3: " << G << std::endl;
+    
+    // Phase 8A Logging
+    std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
+    std::cout << "R_mem: " << latest.r_mem << std::endl;
+    std::cout << "R_rec: " << latest.r_rec << std::endl;
 
     return 0;
 }
