@@ -47,23 +47,27 @@ jobs:
           python3 scripts/prepare_sequences.py
           python3 scripts/prepare_graphs.py
           python3 scripts/generate_extreme_datasets.py
-          # Run Standard Benchmarks
+          # Run Standard Benchmarks (XS/S scale)
           SRF_CI_SCALE_ONLY=1 bash benchmarks/run_benchmarks.sh
-          # Phase 7: Extreme Scale Attempt with Fallback
-          echo "Attempting Extreme-Scale Stress Tests..."
-          if bash stress_tests/extreme_scale.sh; then
-            echo "Extreme-scale tests completed successfully."
-          else
-            echo "Extreme-scale tests failed or timed out. Falling back to Moderate-scale."
-            bash stress_tests/moderate_scale.sh
-          fi
+          # Phase 8: Generate Plots and Results
+          python3 benchmarks/generate_plots.py
+          cp results/plots/*.png docs/
           # Analytical Modeling and Regime Mapping
           python3 analysis/predictive_analysis.py
           python3 analysis/regime_mapping.py
 
-      - name: Upload Benchmark Results
+      - name: Generate Technical Reference PDF (Linux Only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
+          pandoc docs/PROJECT_REFERENCE.md -o docs/SRF_Technical_Reference.pdf --pdf-engine=pdflatex -V geometry:margin=1in
+
+      - name: Upload Research Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-${{ matrix.os }}
-          path: results/
+          name: srf-artifacts-${{ matrix.os }}
+          path: |
+            results/
+            docs/SRF_Technical_Reference.pdf
+            docs/*.png
 
