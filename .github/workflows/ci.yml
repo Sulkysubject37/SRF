@@ -49,6 +49,9 @@ jobs:
           python3 scripts/generate_extreme_datasets.py
           # Run Standard Benchmarks (XS/S scale)
           SRF_CI_SCALE_ONLY=1 bash benchmarks/run_benchmarks.sh
+          # Phase 9: Robustness and Stability Validation
+          bash stress_tests/determinism_validation.sh
+          bash stress_tests/adaptation_stability.sh
           # Phase 8: Generate Plots
           python3 benchmarks/generate_plots.py
           # Analytical Modeling and Regime Mapping

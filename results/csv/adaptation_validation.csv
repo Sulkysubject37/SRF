@@ -1,0 +1,3 @@
+algorithm,platform,adaptation_count,stability_status
+Needleman-Wunsch,Darwin,0,STABLE
+Graph-DP,Darwin,0,STABLE
