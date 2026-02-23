@@ -8,12 +8,10 @@ mkdir -p $TMP_DIR
 
 # Baseline run
 export SRF_LOG_FILE="$TMP_DIR/run1.csv"
-source will/bin/activate
 bash benchmarks/run_benchmarks.sh > /dev/null
 
 # Secondary run
 export SRF_LOG_FILE="$TMP_DIR/run2.csv"
-source will/bin/activate
 bash benchmarks/run_benchmarks.sh > /dev/null
 
 # Compare outputs, ignoring runtime_us and status
