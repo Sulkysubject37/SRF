@@ -49,18 +49,11 @@ jobs:
           python3 scripts/generate_extreme_datasets.py
           # Run Standard Benchmarks (XS/S scale)
           SRF_CI_SCALE_ONLY=1 bash benchmarks/run_benchmarks.sh
-          # Phase 8: Generate Plots and Results
+          # Phase 8: Generate Plots
           python3 benchmarks/generate_plots.py
-          cp results/plots/*.png docs/
           # Analytical Modeling and Regime Mapping
           python3 analysis/predictive_analysis.py
           python3 analysis/regime_mapping.py
-
-      - name: Generate Technical Reference PDF (Linux Only)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update && sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-fonts-extra texlive-latex-extra
-          pandoc docs/PROJECT_REFERENCE.md -o docs/SRF_Technical_Reference.pdf --pdf-engine=pdflatex -V geometry:margin=1in
 
       - name: Upload Research Artifacts
         uses: actions/upload-artifact@v4
@@ -68,6 +61,4 @@ jobs:
           name: srf-artifacts-${{ matrix.os }}
           path: |
             results/
-            docs/SRF_Technical_Reference.pdf
-            docs/*.png
 
