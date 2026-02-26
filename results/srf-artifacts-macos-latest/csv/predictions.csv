@@ -1,4 +1,0 @@
-algorithm,variant,platform,backend_type,granularity_unit_size,relative_cost_ratio,cache_regime,accelerator_feasibility,locality_index
-Needleman-Wunsch,SRF-GranularityAware,Darwin,cpu,,INSUFFICIENT_DATA,UNKNOWN,UNFEASIBLE,
-Forward,SRF-GranularityAware,Darwin,cpu,,INSUFFICIENT_DATA,UNKNOWN,UNFEASIBLE,
-Graph-DP,SRF-GranularityAware,Darwin,cpu,,INSUFFICIENT_DATA,UNKNOWN,UNFEASIBLE,

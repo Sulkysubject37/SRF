@@ -1,4 +1,0 @@
-algorithm,variant,platform,runtime_us,peak_memory_kb,recompute_events,compute_events,memory_access_proxy,dispatch_overhead_proxy,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,device_memory_budget,transfer_overhead_us,kernel_launch_count,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,dataset_scale,input_size,regime_state,drift_state,R_mem,R_rec,adaptation_event,adaptation_reason,old_param,new_param,status
-Needleman-Wunsch,SRF-GranularityAware,Darwin,1014,1200,0,0,0,0,0,0,0,0,0,0,cpu,NA,NA,NA,tile,NA,0,0,XS,0,UNKNOWN,STABLE,1.10777,0.474376,false,NONE,NA,NA,Success
-Forward,SRF-GranularityAware,Darwin,39,,0,0,0,0,0,0,0,0,0,0,cpu,NA,NA,NA,segment,NA,0,0,S,0,UNKNOWN,STABLE,0.678177,0.321823,false,NONE,NA,NA,Success
-Graph-DP,SRF-GranularityAware,Darwin,0,1168,0,0,0,0,0,0,0,0,0,0,cpu,NA,NA,NA,group,NA,0,0,S,0,UNKNOWN,INSUFFICIENT_DATA,0,0,false,NONE,NA,NA,Success

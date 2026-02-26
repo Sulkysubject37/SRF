@@ -26,6 +26,15 @@ jobs:
       - name: Build SRF
         run: bash benchmarks/build.sh
 
+      - name: Set up Python and install dependencies
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy statsmodels scikit-learn matplotlib seaborn
+
       - name: Run bounded workloads with memory limit
         run: |
           export SRF_LOG_FILE="results/csv/memory_constraint_log.csv"

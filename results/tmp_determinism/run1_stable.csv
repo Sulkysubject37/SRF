@@ -1,4 +1,0 @@
-algorithm,variant,peak_memory_kb,recompute_events,compute_events,memory_access_proxy,dispatch_overhead_proxy,cache_budget,working_set_proxy,locality_proxy,param_1,param_2,param_3,backend_type,granularity_type,granularity_unit_size,unit_recompute_events,unit_reuse_proxy,dataset_scale,input_size
-Needleman-Wunsch,SRF-GranularityAware,1392,0,0,0,0,0,0,0,0,0,0,cpu,tile,NA,0,0,XS,0
-Forward,SRF-GranularityAware,,0,0,0,0,0,0,0,0,0,0,cpu,segment,NA,0,0,S,0
-Graph-DP,SRF-GranularityAware,1248,0,0,0,0,0,0,0,0,0,0,cpu,group,NA,0,0,S,0
