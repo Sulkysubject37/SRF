@@ -66,32 +66,32 @@ jobs:
           SEQ_N="datasets/sequences/processed/neand_xs.txt"
           GRAPH_O="datasets/graphs/processed/go_subset_xs.txt"
 
-          BASE_NW=$(run_bin needleman_wunsch "$SEQ_H" "$SEQ_N" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
-          SRF_NW=$(run_bin nw_blocked "$SEQ_H" "$SEQ_N" 20 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          BASE_NW=$(run_bin needleman_wunsch "$SEQ_H" "$SEQ_N" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_NW=$(run_bin nw_blocked "$SEQ_H" "$SEQ_N" 20 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
           if [ "$BASE_NW" != "$SRF_NW" ]; then
               echo "[FAIL] Needleman-Wunsch: Baseline $BASE_NW != SRF $SRF_NW"
               exit 1
           fi
           echo "[PASS] Needleman-Wunsch Equivalence"
 
-          BASE_V=$(run_bin viterbi "$SEQ_H" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
-          SRF_V=$(run_bin viterbi_checkpoint "$SEQ_H" 10 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          BASE_V=$(run_bin viterbi "$SEQ_H" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_V=$(run_bin viterbi_checkpoint "$SEQ_H" 10 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
           if [ "$BASE_V" != "$SRF_V" ]; then
               echo "[FAIL] Viterbi: Baseline $BASE_V != SRF $SRF_V"
               exit 1
           fi
           echo "[PASS] Viterbi Equivalence"
 
-          BASE_F=$(run_bin forward "$SEQ_H" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
-          SRF_F=$(run_bin forward_checkpoint "$SEQ_H" 10 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          BASE_F=$(run_bin forward "$SEQ_H" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_F=$(run_bin forward_checkpoint "$SEQ_H" 10 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
           if [ "$BASE_F" != "$SRF_F" ]; then
               echo "[FAIL] Forward: Baseline $BASE_F != SRF $SRF_F"
               exit 1
           fi
           echo "[PASS] Forward Equivalence"
 
-          BASE_G=$(run_bin graph_dp "$GRAPH_O" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
-          SRF_G=$(run_bin graph_recompute "$GRAPH_O" 2 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          BASE_G=$(run_bin graph_dp "$GRAPH_O" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_G=$(run_bin graph_recompute "$GRAPH_O" 2 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
           if [ "$BASE_G" != "$SRF_G" ]; then
               echo "[FAIL] Graph-DP: Baseline $BASE_G != SRF $SRF_G"
               exit 1
