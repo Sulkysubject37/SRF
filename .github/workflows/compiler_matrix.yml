@@ -13,7 +13,6 @@ on:
       - '**.cpp'
       - '**.h'
       - '.github/workflows/compiler_matrix.yml'
-  workflow_dispatch:
 
 jobs:
   build_and_test:

@@ -13,7 +13,6 @@ on:
       - '**.cpp'
       - '**.h'
       - '.github/workflows/determinism_recheck.yml'
-  workflow_dispatch:
 
 jobs:
   determinism_test:

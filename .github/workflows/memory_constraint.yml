@@ -13,7 +13,6 @@ on:
       - '**.cpp'
       - '**.h'
       - '.github/workflows/memory_constraint.yml'
-  workflow_dispatch:
 
 jobs:
   memory_test:
