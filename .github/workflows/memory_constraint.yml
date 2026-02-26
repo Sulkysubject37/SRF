@@ -36,10 +36,6 @@ jobs:
 
       - name: Run bounded workloads with memory limit
         run: |
-          # Temporarily disable python analysis to avoid OOM errors in the analysis script itself.
-          # The goal is to test the C++ binaries under memory pressure.
-          sed -i.bak '/python3/s/^/#/' benchmarks/run_benchmarks.sh
-
           export SRF_LOG_FILE="results/csv/memory_constraint_log.csv"
           # Apply a 256MB memory limit (in KB for ulimit)
           ulimit -v 262144

@@ -34,6 +34,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas numpy statsmodels scikit-learn matplotlib seaborn
 
+      - name: Prepare Datasets
+        run: |
+          bash scripts/download_datasets.sh
+          python3 scripts/prepare_sequences.py
+          python3 scripts/prepare_graphs.py
+          python3 scripts/generate_extreme_datasets.py
+
       - name: Run 1 - Generate first log
         run: |
           export SRF_LOG_FILE="results/csv/determinism_log_1.csv"
