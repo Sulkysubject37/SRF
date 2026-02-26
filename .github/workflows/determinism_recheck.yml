@@ -49,7 +49,8 @@ jobs:
         run: |
           echo "Comparing determinism_log_1.csv and determinism_log_2.csv..."
           # The header contains the platform, which can differ, so we compare from the second line.
-          diff <(tail -n +2 results/csv/determinism_log_1.csv) <(tail -n +2 results/csv/determinism_log_2.csv)
+          # We exclude the non-deterministic runtime (col 4) and memory (col 5) fields from the diff.
+          diff <(tail -n +2 results/csv/determinism_log_1.csv | cut -d, -f1-3,6-) <(tail -n +2 results/csv/determinism_log_2.csv | cut -d, -f1-3,6-)
           if [ $? -eq 0 ]; then
             echo "SUCCESS: Logs are identical. Determinism holds."
           else
