@@ -128,4 +128,5 @@ jobs:
         with:
           name: compiler-validation-log-${{ matrix.compiler }}
           path: results/csv/benchmark_log_${{ matrix.compiler }}.csv
+          if-no-files-found: warn
           retention-days: 7

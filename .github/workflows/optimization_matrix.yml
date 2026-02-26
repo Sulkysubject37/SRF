@@ -119,4 +119,5 @@ jobs:
         with:
           name: optimization-validation-log-${{ matrix.opt_level }}
           path: results/csv/benchmark_log_${{ matrix.opt_level }}.csv
+          if-no-files-found: warn
           retention-days: 7
