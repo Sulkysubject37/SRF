@@ -1,0 +1,122 @@
+name: Compiler Diversity Validation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/compiler_matrix.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/compiler_matrix.yml'
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    name: ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [ gcc, clang ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            export CXX=clang++
+            export CC=clang
+          else
+            export CXX=g++
+            export CC=gcc
+          fi
+          echo "CXX=${CXX}" >> $GITHUB_ENV
+          echo "CC=${CC}" >> $GITHUB_ENV
+
+      - name: Build SRF
+        run: |
+          mkdir -p build
+          ${CXX} -std=c++17 -O3 -c srf/runtime/backend_selector.cpp -o build/backend_selector.o
+          ${CXX} -std=c++17 -O3 -c srf/control/regime_observer.cpp -o build/regime_observer.o
+          ${CXX} -std=c++17 -O3 -c srf/control/drift_detector.cpp -o build/drift_detector.o
+          ${CXX} -std=c++17 -O3 -c srf/control/adaptation_policy.cpp -o build/adaptation_policy.o
+          ${CXX} -std=c++17 -O3 baselines/dp/needleman_wunsch.cpp -o build/needleman_wunsch
+          ${CXX} -std=c++17 -O3 baselines/dp/viterbi.cpp -o build/viterbi
+          ${CXX} -std=c++17 -O3 baselines/dp/forward.cpp -o build/forward
+          ${CXX} -std=c++17 -O3 baselines/graph/graph_dp.cpp -o build/graph_dp
+          ${CXX} -std=c++17 -O3 srf/dp/nw_blocked.cpp build/backend_selector.o build/regime_observer.o build/drift_detector.o build/adaptation_policy.o -o build/nw_blocked
+          ${CXX} -std=c++17 -O3 srf/dp/viterbi_checkpoint.cpp build/backend_selector.o build/regime_observer.o build/drift_detector.o build/adaptation_policy.o -o build/viterbi_checkpoint
+          ${CXX} -std=c++17 -O3 srf/dp/forward_checkpoint.cpp build/backend_selector.o build/regime_observer.o build/drift_detector.o build/adaptation_policy.o -o build/forward_checkpoint
+          ${CXX} -std=c++17 -O3 srf/graph/graph_recompute.cpp build/backend_selector.o build/regime_observer.o build/drift_detector.o build/adaptation_policy.o -o build/graph_recompute
+        
+      - name: Run correctness tests
+        id: run_tests
+        run: |
+          # The run_tests.sh script calls the build script, which we don't want.
+          # We will execute the test logic directly.
+          run_bin() {
+              if [ -f "./build/$1.exe" ]; then
+                  ./build/$1.exe "$2" "$3" "$4" "$5" "$6"
+              elif [ -f "./build/$1" ]; then
+                  ./build/$1 "$2" "$3" "$4" "$5" "$6"
+              else
+                  echo "[ERROR] Binary $1 not found in build/"
+                  exit 1
+              fi
+          }
+
+          SEQ_H="datasets/sequences/processed/human_xs.txt"
+          SEQ_N="datasets/sequences/processed/neand_xs.txt"
+          GRAPH_O="datasets/graphs/processed/go_subset_xs.txt"
+
+          BASE_NW=$(run_bin needleman_wunsch "$SEQ_H" "$SEQ_N" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_NW=$(run_bin nw_blocked "$SEQ_H" "$SEQ_N" 20 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          if [ "$BASE_NW" != "$SRF_NW" ]; then
+              echo "[FAIL] Needleman-Wunsch: Baseline $BASE_NW != SRF $SRF_NW"
+              exit 1
+          fi
+          echo "[PASS] Needleman-Wunsch Equivalence"
+
+          BASE_V=$(run_bin viterbi "$SEQ_H" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_V=$(run_bin viterbi_checkpoint "$SEQ_H" 10 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          if [ "$BASE_V" != "$SRF_V" ]; then
+              echo "[FAIL] Viterbi: Baseline $BASE_V != SRF $SRF_V"
+              exit 1
+          fi
+          echo "[PASS] Viterbi Equivalence"
+
+          BASE_F=$(run_bin forward "$SEQ_H" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_F=$(run_bin forward_checkpoint "$SEQ_H" 10 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          if [ "$BASE_F" != "$SRF_F" ]; then
+              echo "[FAIL] Forward: Baseline $BASE_F != SRF $SRF_F"
+              exit 1
+          fi
+          echo "[PASS] Forward Equivalence"
+
+          BASE_G=$(run_bin graph_dp "$GRAPH_O" | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          SRF_G=$(run_bin graph_recompute "$GRAPH_O" 2 1 XS | grep "Result_Check:" | cut -d' ' -f2- | tr -d '')
+          if [ "$BASE_G" != "$SRF_G" ]; then
+              echo "[FAIL] Graph-DP: Baseline $BASE_G != SRF $SRF_G"
+              exit 1
+          fi
+          echo "[PASS] Graph-DP Equivalence"
+
+      - name: Run benchmarks to generate CSV
+        if: success()
+        run: |
+          export SRF_LOG_FILE="results/csv/benchmark_log_${{ matrix.compiler }}.csv"
+          bash benchmarks/run_benchmarks.sh
+      
+      - name: Upload CSV artifact
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiler-validation-log-${{ matrix.compiler }}
+          path: results/csv/benchmark_log_${{ matrix.compiler }}.csv
+          retention-days: 7

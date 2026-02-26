@@ -1,0 +1,43 @@
+name: Memory-Constraint Behaviour
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/memory_constraint.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/memory_constraint.yml'
+  workflow_dispatch:
+
+jobs:
+  memory_test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build SRF
+        run: bash benchmarks/build.sh
+
+      - name: Run bounded workloads with memory limit
+        run: |
+          export SRF_LOG_FILE="results/csv/memory_constraint_log.csv"
+          # Apply a 256MB memory limit (in KB for ulimit)
+          # This should be enough for small workloads but will pressure the system.
+          ulimit -v 262144
+          bash benchmarks/run_benchmarks.sh
+      
+      - name: Upload CSV artifact
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-constraint-log
+          path: results/csv/memory_constraint_log.csv
+          retention-days: 7

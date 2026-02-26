@@ -1,0 +1,59 @@
+name: Determinism Re-Execution Check
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/determinism_recheck.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '.github/workflows/determinism_recheck.yml'
+  workflow_dispatch:
+
+jobs:
+  determinism_test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build SRF
+        run: bash benchmarks/build.sh
+
+      - name: Run 1 - Generate first log
+        run: |
+          export SRF_LOG_FILE="results/csv/determinism_log_1.csv"
+          bash benchmarks/run_benchmarks.sh
+
+      - name: Run 2 - Generate second log
+        run: |
+          export SRF_LOG_FILE="results/csv/determinism_log_2.csv"
+          bash benchmarks/run_benchmarks.sh
+
+      - name: Compare logs for bit-exact equivalence
+        run: |
+          echo "Comparing determinism_log_1.csv and determinism_log_2.csv..."
+          # The header contains the platform, which can differ, so we compare from the second line.
+          diff <(tail -n +2 results/csv/determinism_log_1.csv) <(tail -n +2 results/csv/determinism_log_2.csv)
+          if [ $? -eq 0 ]; then
+            echo "SUCCESS: Logs are identical. Determinism holds."
+          else
+            echo "FAILURE: Logs are different. Determinism is violated."
+            exit 1
+          fi
+
+      - name: Upload CSV artifacts for inspection
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: determinism-failure-logs
+          path: |
+            results/csv/determinism_log_1.csv
+            results/csv/determinism_log_2.csv
+          retention-days: 7
