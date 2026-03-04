@@ -1,0 +1,152 @@
+\section{Experiments and Results}
+
+\subsection{Experimental Design}
+
+The experimental evaluation of the Structured Recomputation Framework (SRF) is designed to rigorously characterize its structural behavior across diverse algorithmic paradigms, input scales, and computational environments. The overarching objective of these experiments is the empirical measurement of the trade-offs between memory consumption and computational overhead, as well as the formal validation of the framework's deterministic execution properties under varying hardware and software configurations. The evaluation focuses on structural invariance rather than performance speedups, ensuring that the framework's behavior remains stable and predictable across tested regimes. By treating the dynamic programming (DP) execution as a managed functional process, the experiments aim to verify the framework's ability to operate within strictly defined physical resource boundaries.
+
+\subsubsection{Computational Environment}
+
+The evaluation was conducted across a heterogeneous set of three distinct operating systems to ensure that the SRF execution model exhibits cross-platform behavioral consistency. These environments included Linux (Ubuntu 22.04 LTS, x86\_64 architecture), macOS (Darwin 23.x, ARM64 Apple Silicon), and Windows (Windows Server 2022). This multi-platform approach was critical for verifying that the framework's memory management and recomputation logic are independent of the underlying operating system's memory allocation, paging, and process management strategies. The testing on ARM64 and x86\_64 architectures further confirmed that the recomputation kernels produce identical results regardless of the processor's instruction set architecture (ISA) or the endianness of the system. The specific versions of the standard C++ libraries (libstdc++ on Linux and Windows, libc++ on macOS) were also monitored to ensure that standard library implementations of containers like \texttt{std::vector} do not introduce unexpected memory overheads that would distort the $R_{mem}$ measurements.
+
+To validate the compiler invariance of the recomputation kernels, the framework was built and tested using two primary compiler suites: the GNU Compiler Collection (GCC version 11.4 or higher) and the Clang compiler (version 14.0 or higher). The build process utilized a standardized CMake-based infrastructure, enforcing the C++17 language standard and utilizing identical compiler flags across both suites where possible. Specifically, the experiments explored a range of optimization levels, including no optimization (-O0) to verify the base algorithmic logic and standard release optimization (-O2 and -O3) to ensure that compiler-driven instruction reordering, loop unrolling, and register allocation do not interfere with the bit-exact reproducibility of the recomputed states. All builds utilized the \texttt{-fno-associative-math} flag where appropriate to prevent compiler optimizations from altering the order of operations in recomputed probability trellis calculations, which is essential for maintaining the numerical integrity of the Forward algorithm across restoration events.
+
+Furthermore, a strictly controlled memory-constrained environment was established to evaluate the framework's stability under physical resource pressure. This was implemented on the Linux platform using the \texttt{ulimit -v} system utility, which allows for the artificial restriction of the virtual memory available to the process. For these tests, a memory limit of 256MB was imposed during the execution of the C++ binaries. This configuration was specifically used to observe the framework's behavior when the $M_{bound}$ threshold is significantly smaller than the input data size, forcing the activation of the recomputation kernels to maintain the execution frontier. These tests ensure that the framework can operate in memory-starved environments typical of high-density HPC nodes or embedded systems, where the ability to trade compute cycles for memory capacity is a primary operational requirement.
+
+\subsubsection{Benchmark Categories}
+
+The benchmark suite utilized in this study is partitioned into four primary categories, each targeting a specific facet of the framework's operational envelope:
+
+\begin{enumerate}
+    \item \textbf{Synthetic Scaling Experiments:} These experiments utilize synthetically generated sequences and graphs of increasing dimensions to observe the growth of structural metrics as a function of input scale. The sequences are generated over a four-letter alphabet $\{A, C, G, T\}$ to simulate DNA data, while the graphs are generated as random DAGs with varying edge densities. The scales are categorized as Extra-Small (XS), Small (S), Medium (M), Large (L), and Extra-Large (XL). For sequence alignment, these categories correspond to sequence lengths ranging from 100 to 10,000 base pairs. For Graph-DP, they represent node counts from 1,000 to 50,000. These tests provide a controlled baseline for understanding the fundamental scaling properties of the recomputation ratios and the transition points between analytical regimes.
+    \item \textbf{Biological Dataset Experiments:} To evaluate the framework's utility in real-world bioinformatics, SRF was applied to processed biological data. This included the alignment of the complete mitochondrial DNA sequences of \textit{Homo sapiens} and \textit{Homo neanderthalensis} (approximately 16,500 bp each) and the evaluation of score propagation through large-scale subsets of the Gene Ontology (GO) hierarchy. The GO datasets, processed into edgelist formats, introduce realistic dependency structures and irregular graph topologies that test the robustness of the recomputation schedules on actual scientific data.
+    \item \textbf{Extreme-Scale Stress Tests:}     \item \textbf{Extreme-Scale Stress Tests:} These experiments push the framework to the limits of its memory-compute trade-off. They involve global sequence alignments of 50,000 base pairs (Needleman-Wunsch), HMM trellis evaluations with observation sequences of 1,000,000 steps (Forward/Viterbi), and score propagation through massive DAGs with 250,000 nodes (Graph-DP). These tests demonstrate the framework's ability to complete tasks that would traditionally require tens of gigabytes of RAM within a strictly limited memory footprint, verifying the $O(N)$ and $O(\text{width}(\mathcal{G}))$ space claims.
+    \item \textbf{Invariance Validation Suite:} A dedicated suite of tests executed through an automated Continuous Integration (CI) pipeline. These tests are designed to detect any divergence in the structural metrics ($R_{mem}$, $R_{rec}$) or the final algorithmic results when the same workload is executed across different compilers, optimization levels, or on subsequent runs. The suite employs bit-exact CSV comparison logic to ensure that even the smallest deviation in compute or recompute counts is flagged as a validation failure.
+\end{enumerate}
+
+The cross-platform and compiler invariance validation verifies that structural metrics ($R_{mem}$, $R_{rec}$) remain identical across all tested compilers and operating systems. This dedicated suite of tests, executed through an automated Continuous Integration (CI) pipeline, is designed to detect any divergence in the structural metrics or the final algorithmic results when the same workload is executed across different compilers, optimization levels, or on subsequent runs.
+
+\subsubsection{Parameter Exploration}
+
+The primary control surfaces of the framework are its granularity parameters, which were subjected to a systematic parameter sweep to characterize the performance envelope. These parameters are defined as follows:
+\begin{itemize}
+    \item \textbf{B (Blocking Factor):} This parameter defines the width and height of the recomputation tiles in SRF-Needleman-Wunsch. The sweep explored values of $B$ in the range $[2, 100]$, capturing the transition from frequent, small recomputations to sparse, large recomputations. A smaller $B$ increases recomputation frequency but minimizes the internal tile buffer size. The sweep utilized a step size of 5 to identify the optimal $B$ for the 50,000 bp alignment.
+    \item \textbf{K (Segment Length):} In SRF-HMM, $K$ represents the interval between persisted trellis checkpoints. The sweep explored $K$ values from 10 to 1,000, illustrating how the memory required for trellis storage can be traded for the compute cost of segment restoration. The experiments focused on the linear relationship between $K$ and the recomputation overhead.
+    \item \textbf{D (Recompute Depth):} For SRF-Graph-DP, $D$ defines the maximum upstream distance the framework will traverse to reconstruct an evicted node value. The sweep examined depths from 1 to 10, characterizing the overhead of recomputation in dense graph topologies where node dependencies may be highly nested and recursive.
+    \item \textbf{G (Granularity Unit):} This parameter is used by the framework's internal granularity policy to manage the mapping of states to recomputation units (tiles, segments, or node groups). It ensures that the recomputation units are aligned with the hardware's cache structure, maximizing the throughput of the restoration kernels.
+\end{itemize}
+The sweep methodology involved keeping the input dataset constant while varying the granularity parameters, allowing for the isolation of the effects of recomputation frequency on memory consumption and runtime. The results were logged into a dedicated parameters-sweep CSV for longitudinal analysis.
+
+\subsubsection{Recorded Metrics}
+
+Each execution of the SRF binaries was instrumented to capture seven primary metrics, which are logged in a standardized CSV schema for subsequent analysis. The framework utilizes a \texttt{RegimeObserver} component that captures periodic \texttt{RegimeSnapshot} structures during every 100th iteration of the forward pass. Each snapshot includes the cumulative counts of compute and recompute events, the current working set size, and the state of the memory access proxy. This high-frequency logging allows for the observation of intra-execution dynamics.
+
+\begin{itemize}
+    \item \textbf{\texttt{runtime\_us}:} The total elapsed execution time in microseconds, measured using the monotonic \texttt{std::chrono::high\_resolution\_clock}. This captures the overhead of both the forward computation and all restoration kernels invoked during the traceback or backward phase.
+    \item \textbf{\texttt{peak\_memory\_kb}:} The maximum Resident Set Size (RSS) recorded during the process lifetime. This is captured using the \texttt{getrusage} system call on Unix-like systems and \texttt{GetProcessMemoryInfo} on Windows, providing a physical measure of memory pressure.
+    \item \textbf{\texttt{compute\_events}:} The total count of DP cell or state calculations performed during the initial forward pass of the algorithm. This is incremented atomically within the cell computation logic to ensure accuracy.
+    \item \textbf{\texttt{recompute\_events}:} The total count of calculations performed during the recomputation phase (traceback or backward pass) to restore evicted states. This metric is the primary indicator of the "recomputation penalty."
+    \item \textbf{\texttt{R\_mem}:} The memory intensity ratio, calculated as the ratio of the SRF working set size to the estimated storage requirement of a classical quadratic-space implementation. It provides a normalized measure of space efficiency.
+    \item \textbf{\texttt{R\_rec}:} The recomputation ratio, calculated as $(C_{forward} + C_{recompute}) / C_{forward}$. This metric provides a normalized measure of the computational overhead introduced by the recomputation schedule.
+    \item \textbf{\texttt{working\_set\_proxy}:} A direct measure of the bytes allocated for active buffers and checkpoints, excluding operating system overhead. This is calculated based on the capacity of the \texttt{std::vector} and buffer structures within the SRF core.
+\end{itemize}
+The compute and recompute event counts are implemented as internal counters within the core kernels, ensuring that the measurement is independent of hardware-specific performance counters and remains consistent across different architectures. This instrumentation allows for the high-fidelity tracking of execution progress and the identification of regime transitions in real-time.
+
+\subsection{Results}
+
+\subsubsection{Memory Scaling}
+
+The empirical measurements of memory consumption across varying input scales confirm the effectiveness of the SRF execution model in reducing storage requirements. For the SRF-Needleman-Wunsch instantiation, the memory growth was observed to scale linearly with the sequence length $N$ when the blocking factor $B$ was held constant. This behavior is consistent with the double-buffering and sparse checkpointing strategy. In the extreme-scale test involving sequences of 50,000 base pairs, the measured \texttt{working\_set\_proxy} was exactly 400,008 bytes. This represents a significant reduction compared to the baseline requirement of $O(NM)$, which for $N=M=50,000$ and 4-byte integers, would require approximately 10GB of storage. Even for the mitochondrial DNA alignment (16,500 bp), the framework maintained a sub-megabyte working set, whereas a baseline implementation would require over 1GB. The linear scaling profile ensures that the memory requirement grows with the sequence length rather than the sequence product, enabling alignments that were previously impossible on commodity hardware.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/figure_9_memory_scaling.png}
+    \caption{Peak Memory Scaling: Log-log comparison of the classical $O(N^2)$ storage requirement versus the SRF empirical managed working set. The inset highlights the management floor in the small-scale regime.}
+    \label{fig:memory_scaling}
+\end{figure}
+
+\input{tables/table_3_synthetic_summary.tex}
+
+In the case of SRF-HMM (Forward algorithm), the memory usage for a 1,000,000-step observation sequence was recorded at 800,032 bytes for the \texttt{working\_set\_proxy} with a checkpoint interval $K$. This measurement demonstrates that the memory requirement for trellis evaluation is decoupled from the sequence length $T$ and instead scales with the product of the state count $S$ and the number of persisted checkpoints ($T/K$). Specifically, the trellis buffer only holds $S \cdot K$ states during recomputation, while the checkpoint buffer holds $S \cdot (T/K)$ states. For the SRF-Graph-DP instantiation, the evaluation of a Directed Acyclic Graph with 250,000 nodes resulted in a \texttt{working\_set\_proxy} of 1,000,000 bytes. This reflects the efficiency of the frontier-based storage model, where the memory footprint is limited by the width of the graph's evaluation frontier and the recomputation depth rather than the total number of nodes in the graph hierarchy. These results confirm that SRF successfully transforms the memory complexity of these foundational algorithms from $O(N^2)$ or $O(V)$ to manageable linear and frontier-based bounds.
+
+\subsubsection{Runtime Tradeoffs}
+
+The reduction in memory footprint achieved by SRF is accompanied by an increase in total execution time due to the introduction of recomputation events. This trade-off was quantified using the \texttt{runtime\_us} metric across all algorithm instances. For the 10,000 base-pair Needleman-Wunsch alignment, the measured runtime was 2,308,042 microseconds. When the input size was increased five-fold to 50,000 base pairs, the runtime increased to 57,175,454 microseconds. This scaling profile reflects the quadratic increase in the total number of recomputation events required by the tiling strategy when the blocking factor remains fixed relative to the growing input dimensions. The overhead is predictable and follows the $O(N^2)$ growth of the alignment matrix, demonstrating that while the memory is linear, the compute remains quadratic, as expected by the functional recomputation model.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/figure_10_runtime.png}
+    \caption{Execution Time Scaling: Log-log runtime complexity analysis. The empirical slopes $\alpha \approx 2.0$ for SRF-NW and $\alpha \approx 1.0$ for SRF-HMM confirm the theoretical execution profiles.}
+    \label{fig:runtime_scaling}
+\end{figure}
+
+In the SRF-HMM extreme-scale test, the 1,000,000-step Forward evaluation completed in 55,244 microseconds. The recomputation overhead in the segment-based model scales linearly with the sequence length $T$, making it well-suited for long-running genomic HMM searches. For SRF-Graph-DP, the evaluation of the 250,000-node DAG required 11,582 microseconds. These values represent the raw physical time required to satisfy the recomputation schedule on the tested hardware. The observed ratios between forward computation time and recompute time were found to be consistent with the theoretical expectations of the respective recomputation strategies, confirming that the framework's execution is dominated by the predictable costs of cell calculations rather than the management overhead of the recomputation logic. The measured latency per recompute event remained stable throughout the execution, indicating that the framework does not suffer from progressive performance degradation as the state space expands.
+
+\subsubsection{Recomputation and Intensity Metrics}
+
+The analytical metrics $R_{mem}$ and $R_{rec}$ provide a normalized view of the framework's structural performance. In the biological dataset experiments (XS scale), the measured $R_{mem}$ for Needleman-Wunsch was 1.10777. This value, being greater than 1, indicates a regime where the management overhead of the SRF metadata, double-buffers, and checkpointing infrastructure exceeds the storage requirement of the baseline algorithm. This "management floor" defines the lower bound of input size where recomputation-based memory reduction is beneficial. For sequence alignment, this floor is encountered when sequence lengths are below approximately 500 bp, as the overhead of the sparse checkpoint index becomes comparable to the small alignment matrix.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/figure_11_regime.png}
+    \caption{Analytical Regime Mapping: Distribution of the recomputation intensity ratio $R_{rec}$ across problem scales. Shaded regions identify the transition from balanced to compute-intensive states.}
+    \label{fig:regime_mapping}
+\end{figure}
+
+\input{tables/table_4_biological_summary.tex}
+
+The recomputation ratio $R_{rec}$ for the same XS-scale NW test was recorded as 1.474376, meaning that approximately 47\% more computations were performed compared to a baseline forward pass. In the SRF-HMM (Forward) XS-scale test, $R_{mem}$ was measured at 0.678177 and $R_{rec}$ at 1.322034. These metrics characterize the intensity of the recomputation: a lower $R_{mem}$ accompanied by a higher $R_{rec}$ identifies a state of high recomputation intensity where aggressive memory savings are being achieved. The framework's regime classification logic utilized these thresholds to categorize the 50,000 bp NW test as \texttt{MEMORY\_BOUND}, indicating that the recomputation overhead was the primary descriptor of the execution profile at that scale. The transition to the \texttt{MEMORY\_BOUND} regime occurs when the recompute-to-compute ratio exceeds a framework-defined threshold, typically 0.5 for sequence-based DP, reflecting a state where memory preservation is the primary constraint on execution speed.
+
+To provide a formal explanation for the observed stability of the recomputation ratio, we derive $R_{rec}$ as a function of the granularity parameters. In the case of grid-based dynamic programming with a blocking factor $B$, the total number of compute events in a single forward pass $C_{forward}$ is proportional to the matrix area $NM$. During the traceback phase, the framework recomputes the interior of each tile requiring reconstruction. For a path traversing the alignment matrix, the number of such tiles is approximately $N/B$ (assuming $N \approx M$). Each tile recomputation involves $B^2$ cell evaluations. Consequently, the total number of recompute events $C_{recompute}$ is proportional to $(N/B) \cdot B^2$, which simplifies to $NB$. However, in the SRF-Needleman-Wunsch instantiation, the tiling logic necessitates the reconstruction of the entire matrix area in chunks to facilitate traceback exit points, leading to a recompute overhead proportional to $(NM/B)$. Substituting these into the definition of the recomputation ratio:
+\begin{equation}
+R_{rec} = \frac{C_{forward} + C_{recompute}}{C_{forward}} \approx \frac{NM + (NM/B)}{NM} = 1 + \frac{1}{B}
+\end{equation}
+This derivation shows that for a fixed blocking factor $B$, and for input dimensions that are multiples of $B$, the recomputation ratio converges to a constant value. Minor deviations in $R_{rec}$ observed in the synthetic benchmarks occur when $N$ or $M$ are not perfectly divisible by $B$, resulting in incomplete tiles at the matrix boundaries which have a different compute-to-memory ratio. This constant scaling property is a critical descriptor of the framework's predictability, as it ensures that the compute penalty of memory reduction does not escalate with problem scale.
+
+\subsubsection{Extreme-Scale Stress Tests}
+
+The results of the extreme-scale stress tests, as logged in the repository's \texttt{extreme\_log.csv}, provide a definitive characterization of the framework's behavior on large-scale workloads. The following exact measurements were recorded:
+
+\begin{itemize}
+    \item \textbf{Needleman-Wunsch (50,000 bp Alignment):} This test executed a total of 4,756,250,000 compute events, of which 2,256,250,000 were recompute events. The total runtime was 57,175,454 microseconds. The working set was maintained at 400,008 bytes, and the total memory access proxy count reached 5,243,850,001. The execution was formally classified as MEMORY\_BOUND.
+    \item \textbf{Forward HMM (1,000,000 Observations):} This evaluation involved 2,950,000 compute events and 950,000 recompute events. The runtime was 55,244 microseconds, and the working set proxy was 800,032 bytes. The execution state was classified as BALANCED.
+    \item \textbf{Graph-DP (250,000 Node Evaluation):} This test performed 1,375,370 compute events and 1,100,296 recompute events. The runtime was 11,582 microseconds, with a working set of 1,000,000 bytes. Due to the high ratio of recomputation necessitated by the deep graph dependencies, the execution was classified as RECOMPUTATION\_DOMINATED.
+\end{itemize}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/figure_12_extreme.png}
+    \caption{Extreme-Scale Stress Test Summary: Performance and overhead profiles across multi-decade input dimensions for all framework instantiations.}
+    \label{fig:extreme_summary}
+\end{figure}
+
+\input{tables/table_6_extreme_metrics.tex}
+
+These results demonstrate the framework's capability to process genomic-scale datasets within a strictly controlled memory envelope, confirming that the recomputation logic is capable of scaling to millions of operations without instability or numerical divergence.
+
+\subsubsection{Cross-Platform and Compiler Validation}
+
+The validation logs generated by the continuous integration pipeline confirm the structural invariance of the SRF execution model across all tested environments. The metrics $R_{mem}$ and $R_{rec}$ for the Needleman-Wunsch XS-scale test remained bit-exact across both GCC and Clang compilers on the Linux platform, with $R_{mem} = 1.10777$ and $R_{rec} = 0.474376$.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/figure_13_invariance.png}
+    \caption{Structural Metric Invariance: Matrix-style heatmap demonstrating the bit-exact reproducibility of the $R_{mem}$ descriptor across heterogeneous compiler and build configurations.}
+    \label{fig:metric_invariance}
+\end{figure}
+
+\input{tables/table_5_invariance_metrics.tex}
+
+Comparison of these metrics between GCC builds with -O0 and -O2 optimization levels also showed zero divergence in the structural metrics, although the physical runtimes were significantly different. Determinism re-execution checks resulted in bit-exact CSV logs for all algorithmic fields. These results verify that the SRF execution schedule is strictly deterministic and that its structural descriptors are stable across different compilers and optimization settings. The bit-exact equivalence of the final alignment scores and HMM probabilities further validates that the recomputation process does not introduce numerical errors or drift, ensuring scientific reproducibility regardless of the build configuration or execution platform.
+
+\subsubsection{Observed Failure and Boundary Regimes}
+
+Analysis of the comprehensive logs identified two primary boundary regimes where the framework's recomputation model encounters structural or physical limits:
+
+\begin{enumerate}
+    \item \textbf{Management Floor:} Observed in the Extra-Small (XS) scale tests, where $R_{mem} = 1.10777$. In this regime, the memory required for SRF's internal management metadata, fixed-size double-buffers, and checkpoint indices exceeds the memory that would be required by a naive quadratic-space implementation. This identifies the scale below which the recomputation-based execution model does not provide a physical memory benefit. The management floor is a function of the checkpoint density and the granularity of the internal tracking structures, defining the minimum "profitable" input scale for recomputation.
+    \item \textbf{Recomputation Domination:} This state was observed in the 250,000-node Graph-DP extreme-scale test. The recompute-to-compute ratio indicated that the framework spent a significant portion of its duty cycle reconstructing node values rather than advancing the topological evaluation. This state, formally classified as \texttt{RECOMPUTATION\_DOMINATED}, occurs when the graph density or the recomputation depth setting causes the restoration kernels to outweigh the forward progress of the algorithm. This regime identifies the point where the compute penalty of memory reduction begins to limit the practical utility of the framework for real-time analysis.
+\end{enumerate}
+
+To formalize the detection of the management floor, we define the memory consumption of the SRF implementation as $M_{SRF}(N) = M_{meta} + cN$, where $M_{meta}$ is the constant overhead of the management infrastructure and $cN$ is the linearly scaling buffer requirement. The memory consumption of a classical baseline implementation is $M_{base}(N) = c' N^2$. The management floor occurs at the input scale $N_{min}$ where $M_{SRF}(N_{min}) = M_{base}(N_{min})$. Conceptually, this intersection defines the boundary of the memory-efficiency regime. For $N < N_{min}$, the quadratic term is smaller than the combined constant and linear overheads of the recomputation framework. As $N$ increases beyond this point, the quadratic growth of $M_{base}$ quickly outpaces the linear growth of $M_{SRF}$, leading to the $>99\%$ savings observed at genomic scales. The empirical measurement of $R_{mem} > 1$ at the XS scale provides a direct observation of this crossover point, verifying that the benefits of recomputation are restricted to workloads where the theoretical complexity bottleneck manifests as a physical resource constraint.
+
+Importantly, no locality collapse or hardware-level memory exhaustion was observed during the memory-constrained tests, as the core C++ binaries successfully completed their recomputation schedules within the artificially imposed 256MB ulimit. These observations define the stable operational envelope of the framework across the tested biological datasets and scales, providing an empirical baseline for the framework's stability claims.

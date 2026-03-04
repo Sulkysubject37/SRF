@@ -1,0 +1,91 @@
+\section{Background}
+
+\subsection{The Centrality of Dynamic Programming in Molecular Biology}
+Since the conceptualization of the first sequence alignment algorithms, dynamic programming (DP) has served as the mathematical foundation for computational molecular biology. The initial work by Needleman and Wunsch \cite{Needleman1970} introduced a rigorous framework for finding the optimal global alignment of two protein sequences, formalizing the biological intuition that similar sequences share a common evolutionary ancestry. This was followed by the landmark Smith-Waterman algorithm \cite{Smith1981}, which adapted the DP approach to find optimal local alignments, allowing researchers to identify conserved domains and motifs within otherwise divergent sequences.
+
+The utility of DP extends beyond simple pairwise alignment. It is the engine behind Hidden Markov Models (HMMs) used for gene prediction, protein family modeling, and phylogenetic analysis \cite{Durbin1998, Rabiner1989}. The Viterbi and Forward algorithms, both based on DP recurrences, allow for the probabilistic interpretation of biological sequences, providing a way to model the underlying generative processes of evolution \cite{Krogh1994, Eddy1998}. Despite the rise of heuristic methods like BLAST \cite{Altschul1990, Lipman1985} and FASTA \cite{Pearson1988}, DP remains the "gold standard" for accuracy and sensitivity in biological sequence comparison \cite{Sellers1974}.
+
+\subsection{The Quadratic Memory Bottleneck in Classical DP}
+The fundamental challenge in applying classical DP to molecular biology is the storage requirement. For two sequences of length $N$ and $M$, the standard algorithm computes a score matrix $D(i, j)$ of size $(N+1) \times (M+1)$. To find the optimal alignment path, the entire matrix must be stored to perform a traceback from the final cell $D(N, M)$ to the origin $D(0, 0)$. As genome-scale sequencing becomes routine, sequence lengths $N$ and $M$ can reach millions of nucleotides, leading to a memory requirement of $O(NM)$.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/figure_1_complexity.png}
+    \caption{Storage Complexity Divergence: Classical Quadratic Growth Barrier vs. SRF $O(N)$ Managed Boundary. The shaded region represents the physical memory savings achieved by the framework.}
+    \label{fig:complexity_growth}
+\end{figure}
+
+For a relatively small bacterial genome (e.g., $N=M=10^6$), a single matrix using 4-byte integers requires 4 terabytes of memory, which far exceeds the capacity of standard compute nodes. This quadratic storage scaling is not merely a performance issue; it is a hard physical limit that prevents the application of exact alignment to large-scale biological data. The necessity of the traceback operation is the primary driver of this constraint, as each cell $D(i, j)$ must be available to determine the optimal move (match, mismatch, or gap) at step $(i, j)$ \cite{Waterman1995}.
+
+\subsection{Traceback and Memory Persistence}
+The traceback operation is a backward traversal through the DP matrix. At each step, the algorithm chooses the neighbor that contributed to the current cell's optimal score. This requires that every cell computed during the forward pass remains persistent in memory. While the score of the optimal alignment can be computed in $O(\min(N, M))$ space by only keeping the current and previous rows (or columns) \cite{Gotoh1982}, the reconstruction of the alignment itself remains bound to $O(NM)$ in the naive implementation \cite{Gusfield1997, Apostolico1985}.
+
+\subsection{The Hirschberg Linear-Space Algorithm}
+A major breakthrough in addressing the storage bottleneck was Hirschberg's algorithm \cite{Hirschberg1975}, which uses a divide-and-conquer strategy to reduce the memory complexity to $O(\min(N, M))$. The algorithm recursively divides the alignment problem into smaller subproblems. In the forward pass, it computes the scores for a middle row $i = N/2$ from both the top-down and bottom-up (reverse) directions. By finding the index $k$ that maximizes the sum of these two scores, the algorithm identifies a point $(N/2, k)$ that must lie on the optimal path.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/figure_2_hirschberg.png}
+    \caption{Conceptual Overview of the Hirschberg Linear-Space Algorithm: Hierarchical split points and bidirectional score passes.}
+    \label{fig:hirschberg_concept}
+\end{figure}
+
+This approach successfully trades computation for memory. By recomputing parts of the matrix at each level of the recursion, Hirschberg's algorithm achieves a linear space bound. However, this comes at the cost of doubling the total number of operations compared to the quadratic-space version. Despite this overhead, Hirschberg's method and its later adaptations remain the primary solution for large-scale pairwise global alignment \cite{Park1995}.
+
+\subsection{Myers-Miller and Affine-Gap Adaptations}
+Biological sequence alignment often requires affine gap penalties, where the cost of opening a gap is higher than the cost of extending it. This more realistically models the biological process of insertions and deletions (indels). Gotoh \cite{Gotoh1982} provided a quadratic-space DP solution for affine gaps by using three matrices ($M, I, J$).
+
+Myers and Miller \cite{Myers1988} later adapted Hirschberg's linear-space framework to the affine gap model. Their implementation is particularly significant because it demonstrated that the linear-space benefit could be maintained even with the more complex state transitions required for affine gaps. By carefully managing the dependencies between the multiple matrices, they reduced the memory overhead while maintaining the $O(N)$ space complexity. This work is the foundation for almost all modern high-sensitivity alignment tools that handle large sequences \cite{Zhang2000}.
+
+\subsection{Memory Scaling in Profile HMMs}
+The challenges of memory scaling are even more pronounced in the context of Hidden Markov Models (HMMs). Profile HMMs, popularized by tools like HMMER, are used to represent protein families and DNA motifs \cite{Eddy1998}. The Viterbi algorithm and the Forward/Backward algorithms are the standard methods for sequence-to-profile comparison.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/figure_3_hmm_trellis.png}
+    \caption{HMM Trellis Persistence Model: Illustration of full trellis storage requirement versus the active frontier persistence strategy.}
+    \label{fig:hmm_persistence}
+\end{figure}
+
+In an HMM with $K$ states and a sequence of length $N$, the trellis matrix has $K \times N$ cells. For complex profile HMMs with hundreds of states and sequence databases reaching gigabases in size, the storage of the trellis for posterior decoding or alignment reconstruction becomes prohibitive \cite{Eddy2011}. While simple Viterbi decoding can be performed with some memory optimizations, full posterior decoding using the Forward and Backward variables requires the entire trellis, once again leading to a storage requirement that scales linearly with the sequence length and state count, often reaching the limits of modern hardware for long reads or multi-domain proteins.
+
+\subsection{Forward and Viterbi: Probabilistic DP}
+The Viterbi algorithm finds the single most probable path through an HMM, while the Forward and Backward algorithms compute the total probability of the sequence by summing over all possible paths. Both are forms of DP and suffer from the same fundamental storage constraints for path reconstruction. The Forward algorithm, in particular, is sensitive to numerical precision, requiring the storage of high-precision floating-point values in each trellis cell, which further inflates the memory footprint compared to the integer-based scores used in sequence alignment \cite{Durbin1998}.
+
+\subsection{Dimensional Scaling in Multiple Sequence Alignment}
+Multiple Sequence Alignment (MSA) represents the extreme end of the memory scaling problem. Finding the optimal alignment of $L$ sequences of average length $N$ is equivalent to finding the shortest path in an $L$-dimensional hyperspace. The complexity scales as $O(N^L)$, making exact MSA computationally and spatially impossible for even a small number of sequences \cite{Gotoh1986}.
+
+While heuristic and progressive alignment methods are typically used in practice, there are cases where exact or near-exact sub-problems must be solved. In these scenarios, the memory bottleneck is the absolute limiting factor. Even with modern optimizations and high-performance computing (HPC) clusters, the storage of the $L$-dimensional matrix remains the primary barrier to exact MSA \cite{Tan2006}.
+
+\subsection{Cache-Aware and Cache-Oblivious DP}
+The performance of DP algorithms is increasingly determined by their interaction with the computer's memory hierarchy rather than the raw speed of the CPU. Modern architectures feature several layers of cache (L1, L2, L3) between the processor and the main RAM. Traditional row-by-row or column-by-column DP traversals often result in poor cache locality, leading to frequent cache misses and slow execution \cite{Tan2006}.
+
+Cache-oblivious algorithms, introduced by Frigo et al. \cite{Frigo1999}, use recursive divide-and-conquer structures to automatically optimize for any cache hierarchy without explicit parameter tuning. These techniques have been applied to DP to improve spatial and temporal locality \cite{Chowdhury2006}. By reorganizing the computation into blocks that fit within cache lines, these algorithms reduce the memory bandwidth requirements and significantly speed up execution on modern hardware. However, these optimizations focus primarily on runtime performance and often maintain the underlying $O(NM)$ storage requirement for the full matrix.
+
+\subsection{Memory Bandwidth and the "Memory Wall"}
+A critical limitation in modern computing is the "memory wall"---the widening gap between the speed of the CPU and the bandwidth of the main memory. Even if a DP algorithm has low computational complexity, its performance may be throttled by the time it takes to fetch data from RAM. This is especially true for large-scale DP where the matrix size exceeds the total cache capacity \cite{Tan2006, Wozniak1997}.
+
+In biological sequence analysis, this means that even if we use SIMD (Single Instruction, Multiple Data) instructions to vectorize the score calculations \cite{Rognes2011, Daily2016, Farrar2007}, the performance may still be limited by the throughput of the memory bus. This architectural reality necessitates algorithms that can trade inexpensive compute cycles for expensive memory accesses, a strategy that is at the heart of recomputation-based frameworks.
+
+\subsection{Recomputation and Checkpointing Literature}
+Recomputation, also known as checkpointing, is a well-established technique in the field of automatic differentiation and large-scale scientific computing. Griewank \cite{Griewank1992, Griewank2000} formalized the trade-off between the number of checkpoints stored and the amount of recomputation required to evaluate gradients in reverse mode.
+
+The Hirschberg algorithm is a specific instance of this principle applied to sequence alignment. By storing only the middle row as a "checkpoint" and recomputing the preceding rows, it achieves a significant memory reduction. More general checkpointing strategies involve storing periodic rows or columns to allow for partial tracebacks, a technique often used in HMM software and large-scale DP libraries to manage memory usage without incurring the full $O(N)$ space overhead of Hirschberg's method.
+
+\subsection{Formal Identification of the Research Gap}
+Despite the existence of specialized solutions like Hirschberg's algorithm for pairwise alignment and various checkpointing schemes for HMMs, several critical gaps remain in the literature:
+
+\begin{enumerate}
+    \item \textbf{Problem-Specific Implementations:} Existing memory-reduction techniques are typically tightly coupled to specific algorithms (e.g., global alignment with affine gaps). There is a lack of a unified execution abstraction that can be applied to diverse DP problems without manual re-derivation of the recomputation logic.
+    \item \textbf{Lack of Abstraction Layers:} Most bioinformatics tools implement memory management at the same level as the biological recurrences. This leads to code duplication and prevents the application of low-level architectural optimizations (like cache-aligned tiling) across different algorithms.
+    \item \textbf{Lack of Cross-Algorithm Empirical Characterization:} While the theoretical benefits of recomputation are well-understood, there is a lack of comprehensive empirical studies that characterize the trade-offs between memory, recomputation, and cache locality across multiple biological DP paradigms (NW, HMM, Graph-DP) in a single unified framework.
+\end{enumerate}
+
+These gaps indicate a need for a more generalized approach to memory management in biological DP---one that separates the algorithmic recurrence from the physical execution strategy.
+
+\input{tables/table_1_literature.tex}
+
+\subsection{The Structured Recomputation Framework (SRF)}
+In response to these gaps, this work introduces the Structured Recomputation Framework (SRF). SRF is not a new biological recurrence, nor does it provide a new way to find optimal alignments or HMM scores. Instead, it is a deterministic execution-level transformation designed to restructure how DP algorithms are executed on modern hardware.
+
+SRF treats DP as a graph of dependencies and applies a bounded-memory restructuring. It employs a deterministic recomputation schedule that allows for exact traceback and path reconstruction while maintaining a strictly controlled memory footprint. By abstracting the recomputation logic from the underlying recurrence, SRF provides a unified way to apply Hirschberg-like space savings and cache-aware tiling to any DP-based biological problem. Crucially, SRF does not claim to improve the asymptotic time complexity of DP; rather, it aims to provide a stable, inspectable, and memory-efficient execution engine that bridges the gap between theoretical algorithms and the constraints of physical hardware.

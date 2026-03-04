@@ -1,0 +1,67 @@
+\documentclass{bmcart}
+
+%%% Load packages
+\usepackage{amsthm,amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{comment}
+\usepackage{graphicx}
+\usepackage{booktabs}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\begin{fmbox}
+\dochead{Research}
+
+\title{Structural Recomputation Framework: A Deterministic Execution Abstraction for Memory-Constrained Dynamic Programming in Bioinformatics}
+
+\author[addressref={aff1}]{\inits{MA}\fnm{MD.} \snm{Arshad}}
+
+\address[id=aff1]{
+  \orgname{Department of Computer Science, Jamia Millia Islamia},
+  \city{New Delhi},
+  \country{India}
+}
+
+\end{fmbox}
+
+\begin{abstract}
+Dynamic programming (DP) algorithms are foundational to bioinformatics, yet their application to genomic-scale data is frequently constrained by a quadratic memory bottleneck. This storage requirement primarily arises from the necessity of persisting traceback matrices or trellis structures to enable path reconstruction and posterior decoding. While specialized solutions such as Hirschberg's algorithm and algorithm-specific checkpointing schemes have been developed to mitigate these constraints, they often remain tightly coupled to specific recurrences and lack a unified execution abstraction. This work introduces the Structured Recomputation Framework (SRF), a deterministic execution-level abstraction that decouples algorithmic recurrence definitions from physical execution schedules. SRF employs a recurrence-agnostic design and a structured recomputation schedule to enforce strict, user-defined memory upper bounds. The framework's utility is demonstrated across diverse algorithmic paradigms, including sequence alignment (Needleman-Wunsch), Hidden Markov Model evaluation (Forward and Viterbi), and graph-based dynamic programming. Empirical validation on mitochondrial DNA and Gene Ontology datasets confirms a reduction in peak working set size from $O(N^2)$ to $O(N)$, with memory savings exceeding 99\% for extreme-scale workloads. Deterministic properties are verified through cross-platform and compiler invariance checks, ensuring bit-exact reproducibility across heterogeneous compute environments. SRF provides a stable foundation for memory-efficient biological computing without requiring improvement in asymptotic time complexity, effectively trading compute cycles for spatial capacity to enable exact analyses on commodity hardware.
+\end{abstract}
+
+\begin{keyword}
+\kwd{Dynamic Programming}
+\kwd{Sequence Alignment}
+\kwd{Memory Constraints}
+\kwd{Recomputation}
+\kwd{Deterministic Execution}
+\end{keyword}
+
+\end{frontmatter}
+
+\input{background.tex}
+
+\input{sections/methods.tex}
+\input{sections/experiments_results.tex}
+\input{sections/discussion.tex}
+
+\section*{Abbreviations}
+SRF: Structured Recomputation Framework; DP: Dynamic Programming; HMM: Hidden Markov Model; MSA: Multiple Sequence Alignment; CP: Checkpoint.
+
+\section*{Competing interests}
+The author declares that he has no competing interests.
+
+\section*{Authors' contributions}
+MA conceptualized the SRF model, implemented the framework, performed the validation, and wrote the manuscript.
+
+\section*{Acknowledgements}
+Not applicable.
+
+\newpage
+\bibliographystyle{bmc-mathphys}
+\bibliography{references.bib}
+
+\end{document}

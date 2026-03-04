@@ -1,0 +1,143 @@
+\section{Methods}
+
+\subsection{Structured Recomputation Framework}
+
+The Structured Recomputation Framework (SRF) is implemented as a formal execution-level abstraction layer that decouples the mathematical definition of a dynamic programming (DP) recurrence from its physical execution schedule on modern computational hardware. The core objective of SRF is the enforcement of a strict, user-defined memory upper bound, $M_{bound}$, without altering the underlying biological or algorithmic semantics of the DP problem. This objective is achieved through a deterministic state eviction policy combined with a structured, hierarchical recomputation schedule that dynamically manages the memory-compute trade-off.
+
+Formally, this work defines a dynamic programming problem as a directed acyclic graph (DAG) $\mathcal{G} = (\mathcal{V}, \mathcal{E})$, where each vertex $v \in \mathcal{V}$ represents a computational state, and each edge $(u, v) \in \mathcal{E}$ represents a dependency such that the calculation of state $S(v)$ requires the prior knowledge of state $S(u)$. In a classical, naive implementation, the state $S(v)$ for all $v \in \mathcal{V}$ is persisted in a global storage matrix $\mathcal{M}$. The memory requirement of such an implementation is $O(|\mathcal{V}|)$, which scales quadratically with input size for sequence alignment and HMM decoding.
+
+SRF transforms this static storage model into a dynamic, functional execution. The framework specifies a managed buffer $\mathcal{B}$ and an eviction function $f_{evict}: \mathcal{T} \to \mathcal{P}(\mathcal{V})$, where $\mathcal{T}$ represents the execution time step and $\mathcal{P}(\mathcal{V})$ is the power set of vertices. At any step $t$, the buffer contains a subset of states $\mathcal{S}_{active}(t) \subset \mathcal{V}$ such that the total memory consumed $|\mathcal{S}_{active}(t)| \cdot \text{size}(S)$ remains strictly below the threshold $M_{bound}$. When a required state $S(u)$ is needed to compute $S(v)$ but $u$ is no longer present in $\mathcal{S}_{active}(t)$, SRF invokes a recomputation kernel. This kernel identifies a set of persisted checkpoint states $\mathcal{C} \subset \mathcal{V}$ that serve as sufficient initial conditions to reconstruct $S(u)$ through a localized re-execution of the recurrence logic.
+
+The recomputation schedule is governed by a granularity policy $\mathcal{P}$, parameterized by a unit size $G$. This policy determines the spatial and temporal density of the checkpointing set $\mathcal{C}$. Specifically, SRF implements a hierarchical checkpointing strategy where the domain is partitioned into disjoint units---such as tiles, segments, or node groups. Checkpoints are persisted only at the boundaries of these units. The internal states are computed during the forward pass to advance the evaluation frontier but are immediately evicted from the buffer $\mathcal{B}$ once they have satisfied their immediate downstream dependencies. This satisfies the $M_{bound}$ constraint by ensuring that only boundary states and the active frontier persist in long-term storage.
+
+During the traceback or decoding phase, the framework utilizes the persisted boundary states to re-initiate the computation within the required unit. This "on-demand" restoration logic ensures that the framework can provide the necessary intermediate states for path reconstruction without ever maintaining the entire DP matrix in memory. The recomputation kernel is designed to be highly efficient, utilizing localized data structures that maximize cache residency. The frequency and overhead of these recomputation events are directly controlled by the granularity parameter $G$, which serves as the primary control surface for the user to tune the framework's behavior to the available hardware resources.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/figure_4_eviction.png}
+    \caption{Waterfall State Schedule: Execution timeline illustrating states transitioning from active frontier to checkpointed persistence or eviction. The arc denotes an on-demand restoration event.}
+    \label{fig:eviction_timeline}
+\end{figure}
+
+Deterministic execution is a foundational property of the SRF architecture. To ensure that recomputed states are bit-exact duplicates of the original computations, the framework enforces a rigid, fixed traversal order of the dependency graph $\mathcal{G}$ and utilizes deterministic arithmetic kernels. This prevents the numerical divergence that can occur in high-concurrency environments due to floating-point reordering or asynchronous memory access patterns. The relationship between memory consumption and computational overhead is formalized by the structural time-space tradeoff expression:
+\begin{equation}
+T_{total} = T_{base} + \sum_{j \in \mathcal{U}_{recon}} \left( \sum_{v \in \text{unit}_j} \text{cost}(v) \right)
+\end{equation}
+where $T_{base}$ is the primary execution time, $\mathcal{U}_{recon}$ is the set of units requiring reconstruction during the traceback or backward pass, and $\text{cost}(v)$ is the individual computation cost of state $v$.
+
+SRF makes an explicit distinction between the algorithmic recurrence relation and the execution schedule. The framework is designed to be "recurrence-agnostic," meaning that the biological logic---such as match scores, gap penalties, transition probabilities, or emission distributions---remains unchanged. The transformation is strictly confined to the execution strategy, focusing on the redistribution of the computational load to satisfy physical memory constraints. This allows for the exact reconstruction of optimal alignment paths or HMM state sequences while operating within a memory footprint that is decoupled from the quadratic scaling of the problem size.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/figure_5_system.png}
+    \caption{SRF System Architecture: Modular integration of the eviction engine, recompute kernels, and the adaptation control loop.}
+    \label{fig:system_arch}
+\end{figure}
+
+The framework's state eviction policy is further refined based on the topology of the dependency graph. In grid-based DP, SRF employs a wave-front eviction strategy that maintains only the active wavefront of dependencies. In more complex biological networks, the policy uses a frontier-based model where states are evicted as soon as their out-degree within the active computation window reaches zero, unless they are designated as checkpoints by the granularity policy. This ensures that the working set $\mathcal{S}_{active}$ is always minimized relative to the current progress of the algorithm, preventing memory inflation during long-running genomic analyses.
+
+The hierarchical management of checkpoints allows SRF to support nested recomputation, where large units are divided into smaller subunits, each with its own checkpointing density. This recursive structure enables the framework to handle extremely large problem instances by balancing the memory overhead of checkpoints against the computational cost of deep recomputations. The implementation of this logic within the core SRF library ensures that these optimizations are applied consistently across all supported algorithms, providing a unified execution platform for memory-constrained biological computing.
+
+\subsection{Algorithmic Instantiations}
+
+\subsubsection{SRF-Needleman--Wunsch}
+
+The implementation of the Needleman-Wunsch algorithm within the SRF framework restructures the classical $O(NM)$ global sequence alignment problem into a tile-based recomputation model. The classical DP recurrence for an alignment score $D(i, j)$ between two sequences $A$ and $B$ of length $N$ and $M$ is:
+\begin{equation}
+D(i, j) = \max \begin{cases} D(i-1, j-1) + s(A_i, B_j) \\ D(i-1, j) + gap \\ D(i, j-1) + gap \end{cases}
+\end{equation}
+In a baseline implementation, the storage of the entire $(N+1) \times (M+1)$ matrix is mandatory to support the traceback operation required for optimal path reconstruction. For large-scale genomic sequences, such as whole mitochondrial genomes or long-read sequences, this requirement quickly exceeds the available RAM of standard compute nodes.
+
+SRF-Needleman-Wunsch addresses this bottleneck by implementing a double-buffered forward pass. During the primary score calculation, the framework maintains only two active rows of the matrix, $R_{prev}$ and $R_{curr}$, in fast memory. Each cell $D(i, j)$ is computed using the dependencies from the previous row and the current row's preceding cell. As soon as a row is completed and its dependencies for the next row are satisfied, the older row is evicted from memory. This immediate eviction reduces the active working set for the score calculation to $O(\min(N, M))$.
+
+To support the later reconstruction of the optimal alignment path without storing the entire matrix, SRF partitions the $N \times M$ alignment space into a logical grid of tiles, each with dimensions $B \times B$. The granularity parameter $B$, also referred to as the blocking factor, defines the checkpointing density. At the conclusion of each tile's forward pass, SRF persists the scores along the tile's rightmost and bottommost boundaries into a sparse checkpoint buffer. These boundary scores serve as the immutable initial conditions for the later recomputation of the tile's interior cells.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/figure_6_checkpoint.png}
+    \caption{Managed Recompute Unit: Visualization of the $B \times B$ tiling strategy and the persistence of boundary scores for localized interior reconstruction.}
+    \label{fig:nw_tiling}
+\end{figure}
+
+When the global traceback operation enters a tile at specific coordinates $(i, j)$, the framework identifies the corresponding $B \times B$ block and retrieves the stored boundary scores from the preceding tiles. The SRF recomputation kernel then re-executes the Needleman-Wunsch recurrence within the local tile area, effectively restoring the $B \times B$ matrix fragment on-demand. This localized recomputation allows the traceback to proceed through the tile, identifying the optimal path segment, and exiting at one of the top or left boundaries to enter the next tile.
+
+Once the traceback leaves a tile, the $B \times B$ fragment is immediately evicted, and the memory is reclaimed for the next unit of reconstruction. This strategy effectively reduces the global storage footprint from $O(NM)$ to $O(\frac{NM}{B})$. The recomputation cost is $O(B^2)$ per tile, which is carefully balanced against the $O(B^2)$ memory savings. The implementation is further optimized through cache-aligned tiling, where the value of $B$ is selected to ensure that the local $B \times B$ recomputation fits entirely within the L1 or L2 cache of the processor. This alignment minimizes the latency penalty associated with re-executing the DP logic by avoiding slow main-memory accesses during the reconstruction phase. The total memory consumed by the framework is a function of the active double-buffers and the sparse checkpoint matrix, both of which scale linearly or sub-linearly with the input sequence length when $B$ is appropriately tuned to the hardware's cache hierarchy.
+
+The handling of gap penalties, particularly affine gaps, requires additional care during tile-based recomputation. In an affine gap model, the state of each cell depends on three distinct matrices (Match, Insertion, Deletion). SRF-Needleman-Wunsch extends the checkpointing logic to persist the boundary states for all three matrices at the tile edges. This ensures that when a tile is recomputed, the gap extension and opening logic is perfectly preserved across tile boundaries, maintaining the bit-exact equivalence of the final alignment. The deterministic nature of the recomputation ensures that the path reconstructed through these tiles is identical to the one that would have been found in a full-matrix implementation, but with a significantly reduced memory footprint.
+
+\subsubsection{SRF-Forward and SRF-Viterbi}
+
+Hidden Markov Model (HMM) evaluations for biological sequence analysis, including protein family modeling and gene finding, rely on the Viterbi and Forward algorithms to process observation sequences. For an HMM with $S$ states and a sequence of length $T$, the trellis $\mathcal{V}$ consists of $S \times T$ states. Decoding the most probable state path (Viterbi) or performing posterior decoding (Forward-Backward) traditionally requires the persistence of the entire $S \times T$ trellis to allow for the backward traversal required by these algorithms.
+
+SRF-HMM instantiates a segment-based checkpointing model to mitigate this $O(ST)$ storage bottleneck. The framework divides the $T$ time steps of the observation sequence into logical segments of length $K$. During the initial forward pass, the state probability vectors $V_t$ (for Viterbi) or $\alpha_t$ (for Forward) are computed. Only vectors at time steps $t$ where $t \pmod K = 0$ are persisted in the global checkpoint buffer. All other intermediate vectors are computed to advance the trellis but are immediately evicted from memory as soon as the next time step's computation is completed.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/figure_7_hmm_restore.png}
+    \caption{Localized Trellis Restoration: Detailed schematic of state recovery from the nearest preceding checkpoint during the backward pass.}
+    \label{fig:hmm_restore}
+\end{figure}
+
+This strategy reduces the active memory footprint for the trellis storage from $O(ST)$ to $O(S \cdot \frac{T}{K}) + O(S \cdot K)$. The first term represents the sparse checkpoint storage maintained throughout the execution, while the second term represents the local segment buffer used during the recomputation of a single unit. During the backward pass---whether it is the traceback of the Viterbi path or the calculation of the backward variables $\beta_t$ in the Forward-Backward algorithm---if a state vector at time $t$ is required and $t$ is not a checkpointed step, the SRF restoration kernel is invoked.
+
+The restoration kernel retrieves the nearest preceding checkpoint $V_{nK}$ and re-executes the HMM state transitions for $K'$ steps until the desired time $t$ is reached. Small deviations in numerical precision during re-execution could lead to catastrophic divergence in the backward pass, potentially invalidating the posterior decoding results. SRF-HMM ensures bit-exact restoration by employing strict IEEE 754 compliance, fixed-order summation, and where necessary, log-space arithmetic kernels. This allows for the exact posterior decoding of genome-scale sequences with a memory requirement that is decoupled from the total sequence length $T$. The checkpoint interval $K$ provides a continuous and fine-grained control surface for the user to balance the recomputation overhead against the available system memory.
+
+The segment-based model is further enhanced by an adaptive checkpointing policy that can adjust $K$ during the forward pass based on the detected state transition complexity. This policy monitors the local variance of state probability vectors as a proxy for computational density; if the HMM enters a region of the sequence with high transition density or significant self-loops, the framework can increase the checkpointing frequency (effectively reducing $K$) to minimize the recomputation cost in that specific segment. This adjustment is triggered when the detected complexity metric exceeds a pre-defined threshold relative to the average transition density of the model. It is important to explicitly state that this adaptive policy is heuristic in nature and does not guarantee the mathematical optimality of the checkpoint schedule. Furthermore, the adaptation logic itself is designed to be low-overhead and does not alter the underlying asymptotic $O(S \cdot T/K)$ scaling of the trellis storage, but rather provides a self-stabilizing mechanism to handle highly variable biological datasets without manual parameter tuning.
+
+\subsubsection{SRF-Graph Dynamic Programming}
+
+The SRF-Graph-DP instantiation extends the recomputation paradigm to dynamic programming over Directed Acyclic Graphs (DAGs). In biological systems, this is directly applicable to the evaluation of Gene Ontology (GO) term scores or the analysis of complex metabolic and signaling pathways. In a DAG $\mathcal{G} = (\mathcal{V}, \mathcal{E})$, the score of a node $v$ is typically an aggregate function of the scores of its immediate predecessors in the graph hierarchy:
+\begin{equation}
+S(v) = \text{Aggregate}_{u \in \text{pred}(v)} (S(u) + \text{weight}(u, v))
+\end{equation}
+Classical evaluation of such graphs requires the storage of all $|V|$ node scores to satisfy the dependencies of nodes that appear later in the topological sort of the graph.
+
+SRF restructures this execution by employing a frontier-based storage and recomputation model. The framework maintains an active working set of nodes, known as the "frontier," which contains only those nodes that are currently required as predecessors for the next set of nodes in the topological evaluation order. As soon as a node $u$ has contributed its score to all of its registered successors in the DAG, it is immediately evicted from the buffer to reclaim memory. To support the later re-evaluation of specific graph regions or the reconstruction of dependency paths, SRF implements a depth-limited recomputation strategy.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\textwidth]{figures/figure_8_dag_frontier.png}
+    \caption{DAG Dependency Frontier: Identification of the evaluation frontier and upstream traversal logic for target node reconstruction.}
+    \label{fig:graph_frontier}
+\end{figure}
+
+A recomputation depth parameter $d$ is introduced as the primary control variable for Graph-DP. When a node $u$ is required by a successor but its value has been evicted, SRF attempts to reconstruct $S(u)$ by traversing the dependency graph upstream. The framework identifies the set of persisted nodes---acting as graph checkpoints---within a distance $d$ and re-executes the DP logic along the paths leading to $u$. If no checkpoints are available within the specified depth, the framework utilizes a hierarchical fallback mechanism to locate the nearest stable checkpoint in the graph's history.
+
+The dependency traversal and recomputation are managed using a strictly deterministic topological sort, ensuring that the restoration process follows the exact same path as the original execution. This reduces the memory complexity of the graph evaluation from $O(|V|)$ to $O(\text{width}(\mathcal{G}))$, where $\text{width}(\mathcal{G})$ is the maximum number of concurrent dependencies in the graph's active evaluation frontier. The framework also handles node metadata and edge weights with the same deterministic rigor, ensuring that the recomputed scores are indistinguishable from the original values.
+
+The implementation includes a specialized `GraphFrontier` manager that tracks node out-degrees in real-time. This manager identifies nodes that are "safe to evict" based on the graph topology, ensuring that the memory footprint is minimized at every step of the topological sort. The frontier management logic is optimized for the sparse nature of many biological graphs, using efficient adjacency lists and bit-vectors to track dependency status without introducing significant computational overhead.
+
+\input{tables/table_2_complexity.tex}
+
+\subsection{Analytical Characterization}
+
+To facilitate the quantitative characterization of the framework's execution behavior, SRF implements a suite of formal analytical metrics. These metrics are intended as empirical descriptors of the structural performance and the trade-offs between memory usage and computational overhead. They are not presented as theoretical guarantees of speedup or optimality, but rather as tools for the objective analysis of the framework's operation across different workloads.
+
+The framework defines the memory intensity ratio, $R_{mem}$, as the ratio of the peak physical memory consumed by the SRF implementation to the estimated memory that would be required by a classical, non-recomputing implementation of the same algorithm:
+\begin{equation}
+R_{mem} = \frac{M_{SRF}}{M_{base}}
+\end{equation}
+A value of $R_{mem} < 1$ indicates a successful reduction in the memory footprint. In the context of biological sequence alignment and HMM decoding, $R_{mem}$ typically scales as $O(1/B)$ or $O(1/K)$, where $B$ and $K$ are the granularity parameters for tiling and segmentation, respectively.
+
+Complementing the memory metric is the recomputation ratio, $R_{rec}$, which quantifies the total computational overhead introduced by the re-execution of DP cells. It is defined as the ratio of the total number of state computations performed---including both initial calculations and recomputations---to the number of computations in a standard single-pass implementation:
+\begin{equation}
+R_{rec} = \frac{C_{forward} + C_{recompute}}{C_{forward}}
+\end{equation}
+where $C_{forward}$ is the baseline count of compute events. $R_{rec}$ provides a normalized measure of the "compute penalty" incurred to achieve the memory savings reported by $R_{mem}$.
+
+Based on the observed values of these metrics, SRF classifies the execution into three distinct analytical regimes. These categories provide a neutral, non-evaluative framework for describing the stability and resource usage of the algorithm under different configurations:
+\begin{enumerate}
+    \item \textbf{MEMORY\_BOUND:} Regimes where the memory reduction is prioritized to the maximum extent, often resulting in very low values of $R_{mem}$ but accompanied by high values of $R_{rec}$.
+    \item \textbf{COMPUTE\_BOUND:} Regimes where the frequency of recomputation events is high enough to dominate the total execution time, indicating that the framework is spending a significant portion of its duty cycle restoring evicted states.
+    \item \textbf{BALANCED:} Regimes where the granularity parameters are tuned to satisfy the physical memory constraints of the system while maintaining an $R_{rec}$ that does not significantly exceed the baseline computational cost.
+\end{enumerate}
+
+The framework utilizes a `RegimeObserver` component to monitor these metrics in real-time during execution. The observer captures periodic snapshots of the compute and memory state, allowing for the detection of "regime drift." Drift occurs when the characteristics of the input data---such as sequence length or graph density---cause the algorithm to transition from a balanced state into a memory-bound or compute-bound state.
+
+\subsection{Implementation and Reproducibility}
+
+The SRF framework is implemented in standard C++17, ensuring compatibility with modern bioinformatics toolchains and cross-platform performance. All computational kernels are designed to be idempotent and free of side effects, ensuring that recomputed values are identical to the original results regardless of the execution context. To provide hardware-level flexibility, the framework employs a backend abstraction layer based on the `IBackend` interface. This allows the core recomputation logic to be separated from the specific implementation of the DP cell calculations.
+
+The framework includes internal components for execution monitoring whose overhead must be accounted for in the structural analysis. The `RegimeObserver` component maintains a history of `RegimeSnapshot` structures to track metrics over time. The memory overhead of this component scales linearly with the number of captured snapshots $O(H)$, where $H$ is the sampling frequency. For a standard execution, $H$ is maintained at a constant value (e.g., 100 snapshots), resulting in an $O(1)$ spatial overhead relative to the problem size $N$. The `GraphFrontier` manager utilized in SRF-Graph-DP maintains the out-degree and dependency state of the active evaluation frontier. The memory overhead of this manager scales as $O(\text{width}(\mathcal{G}))$, which is consistent with the asymptotic space complexity of the frontier-based evaluation model itself. These monitoring components ensure high-fidelity structural metrics while remaining within the strictly bounded memory envelopes established for the primary DP algorithms.
+
+Reproducibility and structural invariance are rigorously validated through a continuous integration (CI) suite that is part of the repository's core infrastructure. This suite monitors the bit-exact equivalence of results across axes of variability including compiler invariance (GCC and Clang) and optimization-level invariance (from `-O0` to `-O3`). Subsequent runs of the same workload are compared to ensure zero divergence in the reported structural metrics. The entire validation process is documented and logged in a standardized CSV format, providing a transparent audit trail of the framework's behavior. Cross-platform execution is verified on macOS (ARM64), Linux (x86\_64), and Windows environments, ensuring that the SRF execution model produces identical, reproducible results regardless of the underlying operating system or processor architecture.
