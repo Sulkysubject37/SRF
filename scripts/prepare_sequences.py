@@ -30,7 +30,6 @@ def prepare_sequences():
         if len(seq_human) < length or len(seq_neand) < length:
             continue
         
-        # Deterministic extraction of related biological fragments
         frag_a = seq_human[:length]
         frag_b = seq_neand[:length]
         

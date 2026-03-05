@@ -9,6 +9,9 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 
+% Force affiliation to appear on the first page by hijacking the authorinfo attribute
+\setattribute{authorinfo}{text}{Department of Computer Science, Jamia Millia Islamia, New Delhi, India}
+
 \begin{document}
 
 \begin{frontmatter}
@@ -18,7 +21,10 @@
 
 \title{Structural Recomputation Framework: A Deterministic Execution Abstraction for Memory-Constrained Dynamic Programming in Bioinformatics}
 
-\author[addressref={aff1}]{\inits{MA}\fnm{MD.} \snm{Arshad}}
+\author[
+  id=au1,
+  addressref={aff1}
+]{\inits{MA}\fnm{MD.} \snm{Arshad}}
 
 \address[id=aff1]{
   \orgname{Department of Computer Science, Jamia Millia Islamia},
@@ -38,6 +44,8 @@ Dynamic programming (DP) algorithms are foundational to bioinformatics, yet thei
 \kwd{Memory Constraints}
 \kwd{Recomputation}
 \kwd{Deterministic Execution}
+\kwd{Numerical Constitutionalism}
+\kwd{Scientific Provenance}
 \end{keyword}
 
 \end{frontmatter}
@@ -47,21 +55,53 @@ Dynamic programming (DP) algorithms are foundational to bioinformatics, yet thei
 \input{sections/methods.tex}
 \input{sections/experiments_results.tex}
 \input{sections/discussion.tex}
+\input{sections/conclusions.tex}
 
-\section*{Abbreviations}
-SRF: Structured Recomputation Framework; DP: Dynamic Programming; HMM: Hidden Markov Model; MSA: Multiple Sequence Alignment; CP: Checkpoint.
-
-\section*{Competing interests}
-The author declares that he has no competing interests.
-
-\section*{Authors' contributions}
-MA conceptualized the SRF model, implemented the framework, performed the validation, and wrote the manuscript.
-
-\section*{Acknowledgements}
-Not applicable.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                  The Bibliography                       %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \newpage
 \bibliographystyle{bmc-mathphys}
 \bibliography{references.bib}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                Declarations (Backmatter)                %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{backmatter}
+
+\section*{List of abbreviations}
+SRF: Structured Recomputation Framework; DP: Dynamic Programming; HMM: Hidden Markov Model; MSA: Multiple Sequence Alignment; CP: Checkpoint.
+
+\section*{Ethics approval and consent to participate}
+Not applicable.
+
+\section*{Consent for publication}
+Not applicable.
+
+\section*{Availability of data and materials}
+The Structured Recomputation Framework (SRF) reference implementation and all benchmark pipelines are available at the following repository:
+
+https://github.com/Sulkysubject37/SRF
+
+The repository contains the full C++17 implementation, benchmarking scripts, continuous integration workflows, and datasets used in this study.
+
+\section*{Competing interests}
+The author declares that he has no competing interests.
+
+\section*{Funding}
+Not applicable.
+
+\section*{Authors' contributions}
+MA conceptualized the SRF model, implemented the framework, performed the validation, and wrote the manuscript.
+
+\section*{Authors' information}
+MD. Arshad is a researcher in the Department of Computer Science at Jamia Millia Islamia, New Delhi, India. His work focuses on high-performance algorithmic engineering and deterministic computing in computational biology.
+
+\section*{Acknowledgements}
+Not applicable.
+
+\end{backmatter}
 
 \end{document}

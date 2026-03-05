@@ -18,7 +18,6 @@ def plot_results(csv_path, output_dir):
     df = df[df['Status'] == 'Success'].sort_values(by='Algorithm')
     os.makedirs(output_dir, exist_ok=True)
     
-    # Identify unique platforms in the data
     platforms = df['Platform'].unique()
 
     for platform_raw in platforms:

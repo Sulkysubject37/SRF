@@ -6,3 +6,11 @@ results/csv/benchmark_log.csv
 **/.DS_Store
 *.exe
 will/
+
+# Exclude manuscript from repository
+manuscript_amb/
+
+
+# Exclude submission archives
+SRF_main.zip
+supplementary.zip

@@ -25,9 +25,9 @@ def parse_go_dag(obo_path):
                 if parent not in go_to_int:
                     go_to_int[parent] = next_id
                     next_id += 1
-                # Edge: Parent -> Child (Biological direction) or Child -> Parent (Traversal)
-                # For DP, we typically traverse dependency: Child depends on Parent.
-                edges.append((go_to_int[parent], go_to_int[current_term], 1))
+    # Edge: Parent -> Child (Biological direction) or Child -> Parent (Traversal)
+    # For DP, we typically traverse dependency: Child depends on Parent.
+    edges.append((go_to_int[parent], go_to_int[current_term], 1))
     
     return edges, next_id
 
@@ -54,10 +54,8 @@ def prepare_graphs():
     scale_data = []
 
     for scale, nodes_limit in scales.items():
-        # Deterministically select first N nodes and their internal edges
-        # This preserves the top-level hierarchical structure
-        subset_edges = [e for e in all_edges if e[0] < nodes_limit and e[1] < nodes_limit]
-        
+            # This preserves the top-level hierarchical structure
+            subset_edges = [e for e in all_edges if e[0] < nodes_limit and e[1] < nodes_limit]        
         graph_path = os.path.join(processed_dir, f"go_subset_{scale.lower()}.txt")
         with open(graph_path, "w") as f:
             for u, v, w in subset_edges:

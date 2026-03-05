@@ -63,7 +63,7 @@ int nw_granularity_aware(const std::string& s1, const std::string& s2, int B_ini
                                  srf::global_metrics.memory_access_proxy, 
                                  srf::global_metrics.working_set_bytes);
                                  
-        // Phase 8B: Evaluate Adaptation
+        // Evaluate Adaptation
         srf::DriftState ds = detector.detect(observer);
         srf::AdaptationSignal signal = adapter.evaluate(ds, observer);
         if (signal.should_adapt) {

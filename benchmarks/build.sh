@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "[SRF] Building C++ Baselines and SRF Variants (Phase 8 Control)..."
+echo "[SRF] Building C++ Baselines and SRF Variants..."
 
 # Output directory for binaries
 mkdir -p build

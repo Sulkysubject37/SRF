@@ -21,12 +21,12 @@ struct Metrics {
     std::atomic<long long> tile_reuse_count{0};
     std::atomic<long long> total_dist_metric{0};
     
-    // Phase 5-A: Granularity tracking
+    // Granularity tracking
     std::atomic<long long> unit_recompute_events{0};
     std::atomic<long long> last_unit_id{-1};
     std::atomic<long long> unit_reuse_proxy{0};
 
-    // Phase 5-B: Analytical Modeling
+    // Analytical Modeling
     std::atomic<long long> compute_events{0};
     std::atomic<long long> memory_access_proxy{0};
     std::atomic<long long> dispatch_overhead_proxy{0};

@@ -81,3 +81,11 @@ If you use SRF in your research, please cite it as follows:
   howpublished = {\url{https://github.com/Sulkysubject37/SRF}}
 }
 ```
+
+## v1.1 — Code Hygiene Maintenance
+This release introduces no changes to the SRF algorithms or experimental results. It is a maintenance update to improve repository hygiene by removing internal development comments and build artifacts. The core documentation and algorithmic implementations are preserved. The manuscript directory has been excluded from the repository via .
+
+
+## v1.1 — Code Hygiene Maintenance
+This release introduces no changes to the SRF algorithms or experimental results. It is a maintenance update to improve repository hygiene by removing internal development comments and build artifacts. The core documentation and algorithmic implementations are preserved. The manuscript directory has been excluded from the repository via `.gitignore`.
+

@@ -117,7 +117,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Time_us: " << duration << std::endl;
     std::cout << "Memory_kb: " << srf::get_peak_rss() << std::endl;
     
-    // Phase 8 Logging
+    // Logging
     std::cout << "Drift_State: " << (d_state == srf::DriftState::STABLE ? "STABLE" : (d_state == srf::DriftState::DRIFT_CANDIDATE ? "DRIFT_CANDIDATE" : "INSUFFICIENT_DATA")) << std::endl;
     std::cout << "R_mem: " << latest.r_mem << std::endl;
     std::cout << "R_rec: " << latest.r_rec << std::endl;

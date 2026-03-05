@@ -9,15 +9,12 @@ def classify_regime(row):
         compute = float(row['compute_events'])
         mem_proxy = float(row['memory_access_proxy'])
         
-        # 1. Recomputation Dominated: Recompute events > 50% of total compute
         if recompute > (compute * 0.5):
             return "RECOMPUTATION_DOMINATED"
         
-        # 2. Compute Bound: Compute events / Memory Proxy is high
         if compute > (mem_proxy * 2):
             return "COMPUTE_BOUND"
             
-        # 3. Memory Bound: Memory Accesses > Compute events
         if mem_proxy > compute:
             return "MEMORY_BOUND"
             

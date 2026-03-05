@@ -13,8 +13,6 @@ def run_predictive_analysis(input_csv, output_csv):
 
     df = pd.read_csv(input_csv)
     
-    # Ensure mandatory fields exist for analysis
-    # If they are missing from C++, we fill with NA to avoid crashes
     required_fields = [
         'compute_events', 'recompute_events', 'memory_access_proxy', 
         'granularity_unit_size', 'backend_type', 'dispatch_overhead_proxy', 
