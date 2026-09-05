@@ -25,9 +25,9 @@ def parse_go_dag(obo_path):
                 if parent not in go_to_int:
                     go_to_int[parent] = next_id
                     next_id += 1
-    # Edge: Parent -> Child (Biological direction) or Child -> Parent (Traversal)
-    # For DP, we typically traverse dependency: Child depends on Parent.
-    edges.append((go_to_int[parent], go_to_int[current_term], 1))
+                # Edge: Parent -> Child (Biological direction) or Child -> Parent (Traversal)
+                # For DP, we typically traverse dependency: Child depends on Parent.
+                edges.append((go_to_int[parent], go_to_int[current_term], 1))
     
     return edges, next_id
 
